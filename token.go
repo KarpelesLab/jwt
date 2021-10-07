@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -140,20 +139,11 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	return tok.value, nil
 }
 
-func (tok *Token) Verify(pub crypto.PublicKey) error {
-	if len(tok.values) < 3 {
-		return ErrNoSignature
+func (tok *Token) Verify(opts ...VerifyOption) error {
+	for _, opt := range opts {
+		if err := opt(tok); err != nil {
+			return err
+		}
 	}
-	sign, err := base64.RawURLEncoding.DecodeString(tok.values[2])
-	if err != nil {
-		return fmt.Errorf("jwt: failed to read signature: %w", err)
-	}
-
-	// pub is typically one of *rsa.PublicKey, *dsa.PublicKey, *ecdsa.PublicKey, or ed25519.PublicKey
-	algo := tok.GetAlgo()
-	if algo == nil {
-		return ErrInvalidToken // unsupported algo
-	}
-
-	return algo.Verify(tok.getSignString(), sign, pub)
+	return nil
 }

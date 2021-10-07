@@ -108,15 +108,9 @@ func (b Payload) GetInt(key string) int64 {
 	}
 }
 
-// IsExpired will check if the body contains a "exp" claim and if it is in the
-// future. Setting "req" to true will make IsExpired return true if "exp" is
-// not set.
-func (b Payload) IsExpired(req bool) bool {
-	if !b.Has("exp") {
-		return req
+func (b Payload) GetNumericDate(key string) time.Time {
+	if !b.Has(key) {
+		return time.Time{} // check IsZero() to see if invalid time was passed
 	}
-	exp := b.GetInt("exp")
-	now := time.Now().Unix()
-
-	return exp < now
+	return time.Unix(b.GetInt(key), 0)
 }

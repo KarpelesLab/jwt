@@ -27,18 +27,15 @@ func TestHmac(t *testing.T) {
 		t.Fatalf("failed to read signed: %s", err)
 	}
 
-	err = tok2.Verify(priv)
+	err = tok2.Verify(jwt.VerifyAlgo(jwt.HS256, jwt.ES256), jwt.VerifySignature(priv), jwt.VerifyExpiresAt(time.Now(), true))
 	if err != nil {
-		t.Fatalf("failed to verify: %s", err)
+		t.Errorf("failed to verify: %s", err)
 	}
 
-	body := tok2.Payload()
-	if body == nil {
-		t.Fatalf("failed to read body: %s", err)
-	}
-
-	if body.IsExpired(true) {
-		t.Errorf("body is expired!")
+	// this should fail
+	err = tok2.Verify(jwt.VerifyExpiresAt(time.Now().Add(366*24*time.Hour), false))
+	if err == nil {
+		t.Errorf("failed to trigger verification failure: %s", err)
 	}
 
 	if tok2.Payload().Get("iss").(string) != "myself" {
@@ -53,7 +50,7 @@ func TestHmacParse(t *testing.T) {
 		t.Fatalf("failed to parse token: %s", err)
 	}
 
-	err = tok.Verify(priv)
+	err = tok.Verify(jwt.VerifySignature(priv))
 	if err != nil {
 		t.Fatalf("failed to verify token: %s", err)
 	}
