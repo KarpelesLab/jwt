@@ -2,9 +2,24 @@ package jwt
 
 type Header map[string]string
 
-func (h Header) GetAlgo() Algo {
-	if v, ok := h["alg"]; ok {
-		return parseAlgo(v)
+func (h Header) Get(key string) string {
+	if h == nil {
+		return ""
 	}
-	return nil // invalid
+	if v, ok := h[key]; ok {
+		return v
+	}
+	return ""
+}
+
+func (h Header) Set(key, value string) error {
+	if h == nil {
+		return ErrNoHeader
+	}
+	h[key] = value
+	return nil
+}
+
+func (h Header) GetAlgo() Algo {
+	return parseAlgo(h.Get("alg"))
 }

@@ -4,6 +4,25 @@ import "time"
 
 type Body map[string]interface{}
 
+// Get is a safe get that will return nil if the body itself is null
+func (b Body) Get(key string) interface{} {
+	if b == nil {
+		return nil
+	}
+	if v, ok := b[key]; ok {
+		return v
+	}
+	return nil
+}
+
+func (b Body) Set(key string, value interface{}) error {
+	if b == nil {
+		return ErrNoBody
+	}
+	b[key] = value
+	return nil
+}
+
 func (b Body) IsExpired() bool {
 	if exp, ok := b["exp"]; ok {
 		now := time.Now().Unix()

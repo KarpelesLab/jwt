@@ -42,83 +42,50 @@ func (tok *Token) GetAlgo() Algo {
 	if tok.algo != nil {
 		return tok.algo
 	}
-	header, err := tok.Header()
-	if err != nil {
-		// could not read header, return invalid algo
-		return nil
-	}
-
-	tok.algo = header.GetAlgo()
+	tok.algo = tok.Header().GetAlgo()
 	return tok.algo
 }
 
 func (tok *Token) GetKeyId() string {
-	header, err := tok.Header()
-	if err != nil {
-		// could not read header, return empty string
-		return ""
-	}
-
-	if kid, ok := header["kid"]; ok {
-		return kid
-	}
-	return ""
-}
-
-func (tok *Token) SetHeader(key, value string) error {
-	header, err := tok.Header()
-	if err != nil {
-		return err
-	}
-	header[key] = value
-	return nil
-}
-
-func (tok *Token) Set(key string, value interface{}) error {
-	body, err := tok.Body()
-	if err != nil {
-		return err
-	}
-	body[key] = value
-	return nil
+	return tok.Header().Get("kid")
 }
 
 // Header returns the decoded header part of the token and is useful to read
 // the kid value for the signature
-func (tok *Token) Header() (Header, error) {
+func (tok *Token) Header() Header {
 	if tok.header != nil {
-		return tok.header, nil
+		return tok.header
 	}
 
 	str, err := base64.RawURLEncoding.DecodeString(tok.values[0])
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	err = json.Unmarshal(str, &tok.header)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	return tok.header, nil
+	return tok.header
 }
 
-func (tok *Token) Body() (Body, error) {
+func (tok *Token) Body() Body {
 	if tok.body != nil {
-		return tok.body, nil
+		return tok.body
 	}
 
 	str, err := base64.RawURLEncoding.DecodeString(tok.values[1])
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	err = json.Unmarshal(str, &tok.body)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	return tok.body, nil
+	return tok.body
 }
 
 func (tok Token) getSignString() []byte {
@@ -132,27 +99,16 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 		return "", ErrInvalidToken
 	}
 
-	// build token
-	header, err := tok.Header()
-	if err != nil {
-		return "", err
-	}
-
-	body, err := tok.Body()
-	if err != nil {
-		return "", err
-	}
-
 	values := make([]string, 2, 3)
 
 	// encode to json
-	jsonVal, err := json.Marshal(header)
+	jsonVal, err := json.Marshal(tok.Header())
 	if err != nil {
 		return "", err
 	}
 	values[0] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
-	jsonVal, err = json.Marshal(body)
+	jsonVal, err = json.Marshal(tok.Body())
 	if err != nil {
 		return "", err
 	}

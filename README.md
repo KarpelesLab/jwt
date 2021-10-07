@@ -10,8 +10,25 @@ It allows creating and verifying jwt tokens easily.
 
 ## Create & sign a new token
 
-	priv := []byte("this is a hmac key")
-	tok := jwt.New(jwt.HS256)
-	tok.Set("iss", "myself")
-	tok.Set("exp", time.Now().Add(365*24*time.Hour).Unix())
-	sign, err := tok.Sign(priv)
+```go
+priv := []byte("this is a hmac key")
+tok := jwt.New(jwt.HS256)
+tok.Header().Set("typ", "JWT") // syntax to set header values
+tok.Body().Set("iss", "myself")
+tok.Body().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
+sign, err := tok.Sign(priv)
+```
+
+## Verify a token
+
+```go
+token, err := jwt.ParseString(input)
+if err != nil {
+	...
+}
+err = token.Verify(publicKey)
+if err != nil {
+	...
+}
+log.Printf("token iss value = %s", token.Body().Get("iss"))
+```
