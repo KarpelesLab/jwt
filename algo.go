@@ -35,6 +35,10 @@ var (
 	RS384 Algo = rsaAlgo(crypto.SHA384).reg()
 	RS512 Algo = rsaAlgo(crypto.SHA512).reg()
 
+	PS256 Algo = rsaPssAlgo(crypto.SHA256).reg()
+	PS384 Algo = rsaPssAlgo(crypto.SHA384).reg()
+	PS512 Algo = rsaPssAlgo(crypto.SHA512).reg()
+
 	ES256 Algo = ecdsaAlgo(crypto.SHA256).reg()
 	ES384 Algo = ecdsaAlgo(crypto.SHA384).reg()
 	ES512 Algo = ecdsaAlgo(crypto.SHA512).reg()
