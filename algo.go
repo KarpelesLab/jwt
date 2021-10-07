@@ -31,7 +31,7 @@ var (
 
 	HS256 Algo = hmacAlgo(crypto.SHA256).reg()
 	HS384 Algo = hmacAlgo(crypto.SHA384).reg()
-	HS845 Algo = hmacAlgo(crypto.SHA512).reg()
+	HS512 Algo = hmacAlgo(crypto.SHA512).reg()
 
 	RS256 Algo = rsaAlgo(crypto.SHA256).reg()
 	RS384 Algo = rsaAlgo(crypto.SHA384).reg()
