@@ -108,6 +108,35 @@ func (b Payload) GetInt(key string) int64 {
 	}
 }
 
+func (b Payload) GetFloat(key string) float64 {
+	switch v := b.Get(key).(type) {
+	case string:
+		res, _ := strconv.ParseFloat(v, 64)
+		return res
+	case float64:
+		return v
+	case int64:
+		return float64(v)
+	case json.Number:
+		res, _ := v.Float64()
+		return res
+	case nil:
+		return 0
+	default:
+		// use reflect
+		rv := reflect.ValueOf(v)
+		switch rv.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return float64(rv.Int())
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return float64(rv.Uint())
+		case reflect.Float32, reflect.Float64:
+			return rv.Float()
+		}
+		return 0
+	}
+}
+
 func (b Payload) GetNumericDate(key string) time.Time {
 	if !b.Has(key) {
 		return time.Time{} // check IsZero() to see if invalid time was passed
