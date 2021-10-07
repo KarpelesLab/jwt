@@ -20,6 +20,14 @@ func (h Header) Set(key, value string) error {
 	return nil
 }
 
+func (h Header) Has(key string) bool {
+	if h == nil {
+		return false
+	}
+	_, ok := h[key]
+	return ok
+}
+
 func (h Header) GetAlgo() Algo {
 	return parseAlgo(h.Get("alg"))
 }

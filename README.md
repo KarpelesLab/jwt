@@ -10,6 +10,14 @@ It allows creating and verifying jwt tokens easily.
 
 The main issue I have with [the existing JWT lib](https://github.com/golang-jwt/jwt) is that the syntax is too heavy.
 
+## TODO
+
+There are some things that still remain to be done:
+
+* [ ] Implement more verification methods
+* [ ] Test, test and test
+* [ ] Write more documentation
+
 # Examples
 
 ## Create & sign a new token
