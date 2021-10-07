@@ -46,11 +46,13 @@ var (
 	ES512 Algo = ecdsaAlgo(crypto.SHA512).reg()
 
 	EdDSA Algo = ed25519Algo{}.reg()
+	None  Algo = noneAlgo{}.reg()
 
 	algoMap = map[string]Algo{}
 )
 
-// RegisterAlgo allows registration of custom algorythms
+// RegisterAlgo allows registration of custom algorithms. We assume this will
+// be called during init in a single thread, so no locking is performed.
 func RegisterAlgo(obj Algo) {
 	algoMap[obj.String()] = obj
 

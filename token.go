@@ -143,33 +143,43 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 		return "", err
 	}
 
-	buf := &bytes.Buffer{}
+	values := make([]string, 2, 3)
 
 	// encode to json
 	jsonVal, err := json.Marshal(header)
 	if err != nil {
 		return "", err
 	}
-
-	buf.WriteString(base64.RawURLEncoding.EncodeToString(jsonVal))
+	values[0] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
 	jsonVal, err = json.Marshal(body)
 	if err != nil {
 		return "", err
 	}
+	values[1] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
+	// build buf
+	buf := &bytes.Buffer{}
+	buf.WriteString(values[0])
 	buf.WriteByte('.')
-	buf.WriteString(base64.RawURLEncoding.EncodeToString(jsonVal))
+	buf.WriteString(values[1])
 
+	// actual signature
 	sign, err := algo.Sign(buf.Bytes(), priv)
 	if err != nil {
 		return "", err
 	}
+	if sign != nil {
+		values = append(values, base64.RawURLEncoding.EncodeToString(sign))
 
-	buf.WriteByte('.')
-	buf.WriteString(base64.RawURLEncoding.EncodeToString(sign))
+		buf.WriteByte('.')
+		buf.WriteString(values[2])
+	}
 
-	return buf.String(), nil
+	tok.value = buf.String()
+	tok.values = values
+
+	return tok.value, nil
 }
 
 func (tok *Token) Verify(pub crypto.PublicKey) error {
