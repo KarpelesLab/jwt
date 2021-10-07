@@ -53,3 +53,8 @@ func (h rsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 
 	return rsa.VerifyPKCS1v15(pk, h.Hash(), hash.Sum(nil), sign)
 }
+
+func (h rsaAlgo) reg() Algo {
+	RegisterAlgo(h)
+	return h
+}

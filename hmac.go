@@ -49,3 +49,8 @@ func (h hmacAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	}
 	return nil
 }
+
+func (h hmacAlgo) reg() Algo {
+	RegisterAlgo(h)
+	return h
+}

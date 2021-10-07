@@ -11,6 +11,10 @@ func (h ed25519Algo) String() string {
 	return "EdDSA"
 }
 
+func (h ed25519Algo) Aliases() []string {
+	return []string{"EdDSA", "EDDSA"}
+}
+
 func (h ed25519Algo) Hash() crypto.Hash {
 	return crypto.Hash(0)
 }
@@ -40,4 +44,9 @@ func (h ed25519Algo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	}
 
 	return nil
+}
+
+func (h ed25519Algo) reg() Algo {
+	RegisterAlgo(h)
+	return h
 }

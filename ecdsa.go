@@ -57,3 +57,8 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 
 	return nil
 }
+
+func (h ecdsaAlgo) reg() Algo {
+	RegisterAlgo(h)
+	return h
+}
