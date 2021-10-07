@@ -5,34 +5,18 @@ import (
 	_ "crypto/sha256"
 )
 
-type Algo string
+type Algo interface {
+	String() string
+	Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error)
+	Verify(buf, sign []byte, pub crypto.PublicKey) error // should return ErrInvalidSignature if invalid, or any other error
+}
 
-const (
-	HS256 Algo = "HS256"
-	RS256 Algo = "RS256"
-	ES256 Algo = "ES256"
-	EdDSA Algo = "EdDSA"
+var (
+	HS256 Algo = hmacAlgo(crypto.SHA256)
+	RS256 Algo = rsaAlgo(crypto.SHA256)
+	ES256 Algo = ecdsaAlgo(crypto.SHA256)
+	EdDSA Algo = &ed25519Algo{}
 )
-
-func (a Algo) IsValid() bool {
-	switch a {
-	case HS256, RS256, ES256, EdDSA:
-		return true
-	default:
-		return false
-	}
-}
-
-func (a Algo) Hash() crypto.Hash {
-	switch a {
-	case HS256, RS256, ES256:
-		return crypto.SHA256
-	case EdDSA:
-		return crypto.Hash(0)
-	default:
-		return crypto.Hash(0)
-	}
-}
 
 func parseAlgo(v string) Algo {
 	switch v {
@@ -46,6 +30,6 @@ func parseAlgo(v string) Algo {
 		return EdDSA
 	default:
 		// unsupported
-		return Algo("")
+		return nil
 	}
 }

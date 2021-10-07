@@ -6,5 +6,5 @@ func (h Header) GetAlgo() Algo {
 	if v, ok := h["alg"]; ok {
 		return parseAlgo(v)
 	}
-	return Algo("") // "invalid"
+	return nil // invalid
 }

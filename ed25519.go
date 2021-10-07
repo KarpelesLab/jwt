@@ -1,0 +1,43 @@
+package jwt
+
+import (
+	"crypto"
+	"crypto/ed25519"
+)
+
+type ed25519Algo struct{}
+
+func (h ed25519Algo) String() string {
+	return "EdDSA"
+}
+
+func (h ed25519Algo) Hash() crypto.Hash {
+	return crypto.Hash(0)
+}
+
+func (h ed25519Algo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+	pk, ok := priv.(crypto.Signer)
+	if !ok {
+		return nil, ErrInvalidSignKey
+	}
+
+	// ensure public key is a *rsa.PublicKey
+	if _, ok := pk.Public().(ed25519.PublicKey); !ok {
+		return nil, ErrInvalidSignKey
+	}
+
+	return pk.Sign(nil, buf, h.Hash())
+}
+
+func (h ed25519Algo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
+	pk, ok := pub.(ed25519.PublicKey)
+	if !ok {
+		return ErrInvalidSignature
+	}
+
+	if !ed25519.Verify(pk, buf, sign) {
+		return ErrInvalidSignature
+	}
+
+	return nil
+}
