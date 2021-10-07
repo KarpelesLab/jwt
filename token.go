@@ -39,22 +39,22 @@ func ParseString(value string) (*Token, error) {
 	}, nil
 }
 
-func (raw *Token) GetAlgo() Algo {
-	if raw.algo != nil {
-		return raw.algo
+func (tok *Token) GetAlgo() Algo {
+	if tok.algo != nil {
+		return tok.algo
 	}
-	header, err := raw.Header()
+	header, err := tok.Header()
 	if err != nil {
 		// could not read header, return invalid algo
 		return nil
 	}
 
-	raw.algo = header.GetAlgo()
-	return raw.algo
+	tok.algo = header.GetAlgo()
+	return tok.algo
 }
 
-func (raw *Token) GetKeyId() string {
-	header, err := raw.Header()
+func (tok *Token) GetKeyId() string {
+	header, err := tok.Header()
 	if err != nil {
 		// could not read header, return empty string
 		return ""
@@ -86,65 +86,65 @@ func (tok *Token) Set(key string, value interface{}) error {
 
 // Header returns the decoded header part of the token and is useful to read
 // the kid value for the signature
-func (raw *Token) Header() (Header, error) {
-	if raw.header != nil {
-		return raw.header, nil
+func (tok *Token) Header() (Header, error) {
+	if tok.header != nil {
+		return tok.header, nil
 	}
 
-	str, err := base64.RawURLEncoding.DecodeString(raw.values[0])
+	str, err := base64.RawURLEncoding.DecodeString(tok.values[0])
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(str, &raw.header)
+	err = json.Unmarshal(str, &tok.header)
 	if err != nil {
 		return nil, err
 	}
 
-	return raw.header, nil
+	return tok.header, nil
 }
 
-func (raw *Token) Body() (Body, error) {
-	if raw.body != nil {
-		return raw.body, nil
+func (tok *Token) Body() (Body, error) {
+	if tok.body != nil {
+		return tok.body, nil
 	}
 
-	str, err := base64.RawURLEncoding.DecodeString(raw.values[1])
+	str, err := base64.RawURLEncoding.DecodeString(tok.values[1])
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(str, &raw.body)
+	err = json.Unmarshal(str, &tok.body)
 	if err != nil {
 		return nil, err
 	}
 
-	return raw.body, nil
+	return tok.body, nil
 }
 
-func (raw Token) writeSignString(w io.Writer) error {
-	_, err := w.Write(raw.getSignString())
+func (tok Token) writeSignString(w io.Writer) error {
+	_, err := w.Write(tok.getSignString())
 	return err
 }
 
-func (raw Token) getSignString() []byte {
-	ln := len(raw.values[0]) + len(raw.values[1]) + 1
-	return []byte(raw.value[:ln])
+func (tok Token) getSignString() []byte {
+	ln := len(tok.values[0]) + len(tok.values[1]) + 1
+	return []byte(tok.value[:ln])
 }
 
-func (raw *Token) Sign(priv crypto.PrivateKey) (string, error) {
-	algo := raw.GetAlgo()
+func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
+	algo := tok.GetAlgo()
 	if algo == nil {
 		return "", ErrInvalidToken
 	}
 
 	// build token
-	header, err := raw.Header()
+	header, err := tok.Header()
 	if err != nil {
 		return "", err
 	}
 
-	body, err := raw.Body()
+	body, err := tok.Body()
 	if err != nil {
 		return "", err
 	}
@@ -178,20 +178,20 @@ func (raw *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	return buf.String(), nil
 }
 
-func (raw *Token) Verify(pub crypto.PublicKey) error {
-	if len(raw.values) < 3 {
+func (tok *Token) Verify(pub crypto.PublicKey) error {
+	if len(tok.values) < 3 {
 		return ErrNoSignature
 	}
-	sign, err := base64.RawURLEncoding.DecodeString(raw.values[3])
+	sign, err := base64.RawURLEncoding.DecodeString(tok.values[3])
 	if err != nil {
 		return fmt.Errorf("jwt: failed to read signature: %w", err)
 	}
 
 	// pub is typically one of *rsa.PublicKey, *dsa.PublicKey, *ecdsa.PublicKey, or ed25519.PublicKey
-	algo := raw.GetAlgo()
+	algo := tok.GetAlgo()
 	if algo == nil {
 		return ErrInvalidToken // unsupported algo
 	}
 
-	return algo.Verify(raw.getSignString(), sign, pub)
+	return algo.Verify(tok.getSignString(), sign, pub)
 }
