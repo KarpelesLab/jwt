@@ -12,8 +12,8 @@ import (
 func TestHmac(t *testing.T) {
 	priv := []byte("this is a hmac key")
 	tok := jwt.New(jwt.HS256)
-	tok.Body().Set("iss", "myself")
-	tok.Body().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
+	tok.Payload().Set("iss", "myself")
+	tok.Payload().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
 	sign, err := tok.Sign(priv)
 
 	if err != nil {
@@ -32,7 +32,7 @@ func TestHmac(t *testing.T) {
 		t.Fatalf("failed to verify: %s", err)
 	}
 
-	body := tok2.Body()
+	body := tok2.Payload()
 	if body == nil {
 		t.Fatalf("failed to read body: %s", err)
 	}
@@ -41,7 +41,7 @@ func TestHmac(t *testing.T) {
 		t.Errorf("body is expired!")
 	}
 
-	if tok2.Body().Get("iss").(string) != "myself" {
+	if tok2.Payload().Get("iss").(string) != "myself" {
 		t.Errorf("invalid value in body")
 	}
 }
@@ -58,7 +58,7 @@ func TestHmacParse(t *testing.T) {
 		t.Fatalf("failed to verify token: %s", err)
 	}
 
-	if tok.Body().Get("loggedInAs").(string) != "admin" {
+	if tok.Payload().Get("loggedInAs").(string) != "admin" {
 		t.Errorf("invalid value in body")
 	}
 }

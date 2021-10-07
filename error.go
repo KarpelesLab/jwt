@@ -9,5 +9,5 @@ var (
 	ErrInvalidSignKey   = errors.New("jwt: invalid key provided for signature")
 	ErrHashNotAvailable = errors.New("jwt: hash method not available")
 	ErrNoHeader         = errors.New("jwt: header is not available (parsing failed?)")
-	ErrNoBody           = errors.New("jwt: body is not available (parsing failed?)")
+	ErrNoPayload        = errors.New("jwt: payload is not available (parsing failed?)")
 )

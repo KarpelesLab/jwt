@@ -6,6 +6,10 @@ This is a simple lib made for small footprint and easy usage
 
 It allows creating and verifying jwt tokens easily.
 
+## Why another jwt lib?
+
+The main issue I have with [the existing JWT lib](https://github.com/golang-jwt/jwt) is that the syntax is too heavy.
+
 # Examples
 
 ## Create & sign a new token

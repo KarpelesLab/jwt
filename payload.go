@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-type Body map[string]interface{}
+type Payload map[string]interface{}
 
 // Get is a safe get that will return nil if the body itself is null
-func (b Body) Get(key string) interface{} {
+func (b Payload) Get(key string) interface{} {
 	if b == nil {
 		return nil
 	}
@@ -20,15 +20,15 @@ func (b Body) Get(key string) interface{} {
 	return nil
 }
 
-func (b Body) Set(key string, value interface{}) error {
+func (b Payload) Set(key string, value interface{}) error {
 	if b == nil {
-		return ErrNoBody
+		return ErrNoPayload
 	}
 	b[key] = value
 	return nil
 }
 
-func (b Body) Has(key string) bool {
+func (b Payload) Has(key string) bool {
 	if b == nil {
 		return false
 	}
@@ -38,7 +38,7 @@ func (b Body) Has(key string) bool {
 
 // GetString will get a value as a string, convert it to a string if possible
 // or return an empty string if the value is not set or cannot be converted.
-func (b Body) GetString(key string) string {
+func (b Payload) GetString(key string) string {
 	switch v := b.Get(key).(type) {
 	case string:
 		return v
@@ -73,7 +73,7 @@ func (b Body) GetString(key string) string {
 	}
 }
 
-func (b Body) GetInt(key string) int64 {
+func (b Payload) GetInt(key string) int64 {
 	switch v := b.Get(key).(type) {
 	case bool:
 		if v {
@@ -111,7 +111,7 @@ func (b Body) GetInt(key string) int64 {
 // IsExpired will check if the body contains a "exp" claim and if it is in the
 // future. Setting "req" to true will make IsExpired return true if "exp" is
 // not set.
-func (b Body) IsExpired(req bool) bool {
+func (b Payload) IsExpired(req bool) bool {
 	if !b.Has("exp") {
 		return req
 	}

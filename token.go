@@ -11,8 +11,8 @@ import (
 
 type Token struct {
 	algo   Algo
-	header Header // parsed if needed
-	body   Body   // parsed if needed
+	header Header  // parsed if needed
+	body   Payload // parsed if needed
 	values []string
 	value  string
 }
@@ -21,7 +21,7 @@ func New(alg Algo) *Token {
 	return &Token{
 		algo:   alg,
 		header: map[string]string{"alg": alg.String()},
-		body:   make(Body),
+		body:   make(Payload),
 	}
 }
 
@@ -70,7 +70,7 @@ func (tok *Token) Header() Header {
 	return tok.header
 }
 
-func (tok *Token) Body() Body {
+func (tok *Token) Payload() Payload {
 	if tok.body != nil {
 		return tok.body
 	}
@@ -110,7 +110,7 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	}
 	values[0] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
-	jsonVal, err = json.Marshal(tok.Body())
+	jsonVal, err = json.Marshal(tok.Payload())
 	if err != nil {
 		return "", err
 	}
