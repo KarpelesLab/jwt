@@ -11,10 +11,19 @@ import (
 )
 
 type Token struct {
+	algo   Algo
 	header Header // parsed if needed
 	body   Body   // parsed if needed
 	values []string
 	value  string
+}
+
+func New(alg Algo) *Token {
+	return &Token{
+		algo:   alg,
+		header: map[string]string{"alg": alg.String()},
+		body:   make(Body),
+	}
 }
 
 func ParseString(value string) (*Token, error) {
@@ -31,13 +40,17 @@ func ParseString(value string) (*Token, error) {
 }
 
 func (raw *Token) GetAlgo() Algo {
+	if raw.algo != nil {
+		return raw.algo
+	}
 	header, err := raw.Header()
 	if err != nil {
 		// could not read header, return invalid algo
 		return nil
 	}
 
-	return header.GetAlgo()
+	raw.algo = header.GetAlgo()
+	return raw.algo
 }
 
 func (raw *Token) GetKeyId() string {
@@ -51,6 +64,24 @@ func (raw *Token) GetKeyId() string {
 		return kid
 	}
 	return ""
+}
+
+func (tok *Token) SetHeader(key, value string) error {
+	header, err := tok.Header()
+	if err != nil {
+		return err
+	}
+	header[key] = value
+	return nil
+}
+
+func (tok *Token) Set(key string, value interface{}) error {
+	body, err := tok.Body()
+	if err != nil {
+		return err
+	}
+	body[key] = value
+	return nil
 }
 
 // Header returns the decoded header part of the token and is useful to read
