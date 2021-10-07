@@ -23,6 +23,8 @@ There are some things that still remain to be done:
 ## Create & sign a new token
 
 ```go
+import _ "crypto/sha256"
+
 priv := []byte("this is a hmac key")
 tok := jwt.New(jwt.HS256)
 tok.Header().Set("typ", "JWT") // syntax to set header values
@@ -34,6 +36,8 @@ sign, err := tok.Sign(priv)
 ## Verify a token
 
 ```go
+import _ "crypto/sha256"
+
 token, err := jwt.ParseString(input)
 if err != nil {
 	...
