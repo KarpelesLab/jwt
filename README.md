@@ -31,7 +31,7 @@ if err != nil {
 	...
 }
 publicKey := fetchPublicKey(token.GetKeyId())
-err = token.Verify(jwt.VerifyAlgo(jwt.ES256, jwt.RS256), jwt.VerifySignature(publicKey))
+err = token.Verify(jwt.VerifyAlgo(jwt.ES256, jwt.RS256), jwt.VerifySignature(publicKey), jwt.VerifyExpiresAt(time.Now(), false))
 if err != nil {
 	...
 }
