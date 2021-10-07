@@ -80,7 +80,9 @@ func (tok *Token) Body() Body {
 		return nil
 	}
 
-	err = json.Unmarshal(str, &tok.body)
+	dec := json.NewDecoder(bytes.NewReader(str))
+	dec.UseNumber()
+	err = dec.Decode(&tok.body)
 	if err != nil {
 		return nil
 	}

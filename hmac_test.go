@@ -37,7 +37,7 @@ func TestHmac(t *testing.T) {
 		t.Fatalf("failed to read body: %s", err)
 	}
 
-	if body.IsExpired() {
+	if body.IsExpired(true) {
 		t.Errorf("body is expired!")
 	}
 
