@@ -1,6 +1,8 @@
 package jwt
 
 import (
+	"bytes"
+	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -99,7 +101,53 @@ func (raw Token) getSignString() []byte {
 	return []byte(raw.value[:ln])
 }
 
-func (raw *Token) Verify(pub interface{}) error {
+func (raw *Token) Sign(priv crypto.PrivateKey) (string, error) {
+	algo := raw.GetAlgo()
+	if algo == nil {
+		return "", ErrInvalidToken
+	}
+
+	// build token
+	header, err := raw.Header()
+	if err != nil {
+		return "", err
+	}
+
+	body, err := raw.Body()
+	if err != nil {
+		return "", err
+	}
+
+	buf := &bytes.Buffer{}
+
+	// encode to json
+	jsonVal, err := json.Marshal(header)
+	if err != nil {
+		return "", err
+	}
+
+	buf.WriteString(base64.RawURLEncoding.EncodeToString(jsonVal))
+
+	jsonVal, err = json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+
+	buf.WriteByte('.')
+	buf.WriteString(base64.RawURLEncoding.EncodeToString(jsonVal))
+
+	sign, err := algo.Sign(buf.Bytes(), priv)
+	if err != nil {
+		return "", err
+	}
+
+	buf.WriteByte('.')
+	buf.WriteString(base64.RawURLEncoding.EncodeToString(sign))
+
+	return buf.String(), nil
+}
+
+func (raw *Token) Verify(pub crypto.PublicKey) error {
 	if len(raw.values) < 3 {
 		return ErrNoSignature
 	}
