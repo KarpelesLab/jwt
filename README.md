@@ -26,6 +26,7 @@ token, err := jwt.ParseString(input)
 if err != nil {
 	...
 }
+publicKey := fetchPublicKey(token.GetKeyId())
 err = token.Verify(publicKey)
 if err != nil {
 	...
