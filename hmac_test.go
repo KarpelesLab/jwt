@@ -2,7 +2,6 @@ package jwt_test
 
 import (
 	_ "crypto/sha256"
-	"log"
 	"testing"
 	"time"
 
@@ -20,7 +19,13 @@ func TestHmac(t *testing.T) {
 		t.Fatalf("failed to sign: %s", err)
 	}
 
-	log.Printf("signed: %s", sign)
+	// test signature
+	err = tok.Verify(jwt.VerifySignature(priv))
+	if err != nil {
+		t.Errorf("unable to verify signature of generated token: %s", err)
+	}
+
+	//log.Printf("signed: %s", sign)
 
 	tok2, err := jwt.ParseString(sign)
 	if err != nil {

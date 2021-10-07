@@ -64,8 +64,48 @@ func VerifyExpiresAt(now time.Time, req bool) VerifyOption {
 		}
 		exp := t.Payload().GetNumericDate("exp")
 
+		// exp date is before now, it means it's in the past
 		if exp.Before(now) {
 			return fmt.Errorf("%w: token has expired", ErrVerifyFailed)
+		}
+		return nil
+	}
+}
+
+// VerifyNotBefore returns a VerifyOption that will check the token's
+// not before claim (nbf).
+//
+// Example use: VerifyNotBefore(time.Now(), false)
+func VerifyNotBefore(now time.Time, req bool) VerifyOption {
+	return func(tok *Token) error {
+		if !tok.Payload().Has("nbf") {
+			if req {
+				return fmt.Errorf("%w: NotBefore claim", ErrVerifyMissing)
+			}
+			return nil
+		}
+		nbf := tok.Payload().GetNumericDate("nbf")
+
+		if now.Before(nbf) {
+			return fmt.Errorf("%w: token is not valid yet (nbf claim)", ErrVerifyFailed)
+		}
+		return nil
+	}
+}
+
+// VerifyTime will verify both the not before and the expires at claims
+func VerifyTime(now time.Time, req bool) VerifyOption {
+	return VerifyMultiple(VerifyExpiresAt(now, req), VerifyNotBefore(now, req))
+}
+
+// VerifyMultiple compounds multiple conditions and fails if any of the passed
+// condition fails.
+func VerifyMultiple(opts ...VerifyOption) VerifyOption {
+	return func(tok *Token) error {
+		for _, opt := range opts {
+			if err := opt(tok); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
