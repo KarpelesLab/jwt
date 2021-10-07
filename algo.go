@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"crypto"
-	_ "crypto/sha256"
 )
 
 // Algo is a jwt signature algorithm. Typical values include HS256 and ES256.
@@ -27,6 +26,9 @@ type Algo interface {
 // note: the .reg() just performs a call to RegisterAlgo() and returns the
 // object itself.
 var (
+	// algos list is found in RFC7518:
+	// https://datatracker.ietf.org/doc/html/rfc7518#section-3
+
 	HS256 Algo = hmacAlgo(crypto.SHA256).reg()
 	HS384 Algo = hmacAlgo(crypto.SHA384).reg()
 	HS845 Algo = hmacAlgo(crypto.SHA512).reg()

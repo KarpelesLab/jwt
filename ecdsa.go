@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"fmt"
 )
 
 type ecdsaAlgo crypto.Hash
@@ -10,13 +11,13 @@ type ecdsaAlgo crypto.Hash
 func (h ecdsaAlgo) String() string {
 	switch h.Hash() {
 	case crypto.SHA224:
-		return "HS224"
+		return "ES224"
 	case crypto.SHA256:
-		return "HS256"
+		return "ES256"
 	case crypto.SHA384:
-		return "HS384"
+		return "ES384"
 	case crypto.SHA512:
-		return "HS512"
+		return "ES512"
 	default:
 		return ""
 	}
@@ -36,6 +37,9 @@ func (h ecdsaAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	if _, ok := pk.Public().(*ecdsa.PublicKey); !ok {
 		return nil, ErrInvalidSignKey
 	}
+	if !h.Hash().Available() {
+		return nil, fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
+	}
 
 	hash := h.Hash().New()
 	hash.Write(buf)
@@ -48,6 +52,10 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	if !ok {
 		return ErrInvalidSignature
 	}
+	if !h.Hash().Available() {
+		return fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
+	}
+
 	hash := h.Hash().New()
 	hash.Write(buf)
 

@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/rsa"
+	"fmt"
 )
 
 type rsaAlgo crypto.Hash
@@ -10,13 +11,13 @@ type rsaAlgo crypto.Hash
 func (h rsaAlgo) String() string {
 	switch h.Hash() {
 	case crypto.SHA224:
-		return "HS224"
+		return "RS224"
 	case crypto.SHA256:
-		return "HS256"
+		return "RS256"
 	case crypto.SHA384:
-		return "HS384"
+		return "RS384"
 	case crypto.SHA512:
-		return "HS512"
+		return "RS512"
 	default:
 		return ""
 	}
@@ -30,6 +31,9 @@ func (h rsaAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.(crypto.Signer)
 	if !ok {
 		return nil, ErrInvalidSignKey
+	}
+	if !h.Hash().Available() {
+		return nil, fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
 	}
 
 	// ensure public key is a *rsa.PublicKey
@@ -48,6 +52,10 @@ func (h rsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	if !ok {
 		return ErrInvalidSignature
 	}
+	if !h.Hash().Available() {
+		return fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
+	}
+
 	hash := h.Hash().New()
 	hash.Write(buf)
 

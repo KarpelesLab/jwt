@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/hmac"
+	"fmt"
 )
 
 type hmacAlgo crypto.Hash
@@ -31,6 +32,9 @@ func (h hmacAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	if !ok {
 		return nil, ErrInvalidSignKey
 	}
+	if !h.Hash().Available() {
+		return nil, fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
+	}
 
 	mac := hmac.New(h.Hash().New, pk)
 	mac.Write(buf)
@@ -42,6 +46,10 @@ func (h hmacAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	if !ok {
 		return ErrInvalidSignature
 	}
+	if !h.Hash().Available() {
+		return fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
+	}
+
 	mac := hmac.New(h.Hash().New, pk)
 	mac.Write(buf)
 	if !hmac.Equal(sign, mac.Sum(nil)) {

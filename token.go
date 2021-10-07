@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 )
 
@@ -122,11 +121,6 @@ func (tok *Token) Body() (Body, error) {
 	return tok.body, nil
 }
 
-func (tok Token) writeSignString(w io.Writer) error {
-	_, err := w.Write(tok.getSignString())
-	return err
-}
-
 func (tok Token) getSignString() []byte {
 	ln := len(tok.values[0]) + len(tok.values[1]) + 1
 	return []byte(tok.value[:ln])
@@ -182,7 +176,7 @@ func (tok *Token) Verify(pub crypto.PublicKey) error {
 	if len(tok.values) < 3 {
 		return ErrNoSignature
 	}
-	sign, err := base64.RawURLEncoding.DecodeString(tok.values[3])
+	sign, err := base64.RawURLEncoding.DecodeString(tok.values[2])
 	if err != nil {
 		return fmt.Errorf("jwt: failed to read signature: %w", err)
 	}
