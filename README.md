@@ -4,7 +4,7 @@
 
 This is a simple lib made for small footprint and easy usage
 
-It allows creating and verifying jwt tokens easily (see code examples below).
+It allows creating, signing, reading and verifying jwt tokens easily (see code examples below).
 
 ## JWT?
 
@@ -20,9 +20,9 @@ The part in the middle is the interesting bit. It's called the Claims and contai
 
 ## Why another jwt lib?
 
-The main issue I have with [the existing JWT lib](https://github.com/golang-jwt/jwt) is that the syntax is too heavy. I've had also issues with it performing checks on incoming `crypto.Signer` objects that prevent third party signature providers such has hardware modules, and a few other things. JWT is a simple enough standard so building a new lib isn't that much work.
+The main issue I have with [the existing JWT lib](https://github.com/golang-jwt/jwt) is that the syntax is too heavy and I had something else in mind in terms of what would make a convenient JWT lib. I've had also issues with it performing checks on incoming `crypto.Signer` objects that prevent third party signature providers such has hardware modules, and a few other things. JWT is a simple enough standard so building a new lib isn't that much work.
 
-Note that all algos are always linked (rsa, ecdsa, ed25519). All libs are also pulled by go's `crypto/x509` so you probably have these already compiled in. If go decides to avoid building these in, then I might move these away too.
+Note that all algos are always linked (hmac, rsa, ecdsa, ed25519). All libs are also pulled by go's `crypto/x509` so you probably have these already compiled in. If go decides to avoid building these in, then I will move these in submodules, but for now there is no need to do so.
 
 ## TODO
 
@@ -46,7 +46,7 @@ tok := jwt.New(jwt.HS256)
 tok.Header().Set("kid", keyId) // syntax to set header values
 tok.Payload().Set("iss", "myself")
 tok.Payload().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
-sign, err := tok.Sign(priv)
+signedToken, err := tok.Sign(priv)
 ```
 
 ## Verify a token
@@ -75,5 +75,5 @@ priv := []byte("this is a hmac key")
 tok := jwt.New(jwt.HS256)
 tok.Header().Set("kid", keyId)
 tok.SetRawPayload(binData, "octet-stream") // can pass cty="" to not set content type
-sign, err := tok.Sign(priv)
+signedToken, err := tok.Sign(priv)
 ```
