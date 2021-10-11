@@ -9,7 +9,8 @@ import (
 
 type Payload map[string]interface{}
 
-// Get is a safe get that will return nil if the body itself is null
+// Get is a safe get that will return nil if the body itself is null or the
+// value is nil. If you want to check if a value exists or not, use Has().
 func (b Payload) Get(key string) interface{} {
 	if b == nil {
 		return nil
@@ -20,6 +21,8 @@ func (b Payload) Get(key string) interface{} {
 	return nil
 }
 
+// Set will set the specified value in the payload. It will return an error if
+// the payload failed to parse, for example because it is not a JSON object.
 func (b Payload) Set(key string, value interface{}) error {
 	if b == nil {
 		return ErrNoPayload
@@ -28,6 +31,7 @@ func (b Payload) Set(key string, value interface{}) error {
 	return nil
 }
 
+// Has returns true if the payload was parsed and the key exists.
 func (b Payload) Has(key string) bool {
 	if b == nil {
 		return false
@@ -38,6 +42,7 @@ func (b Payload) Has(key string) bool {
 
 // GetString will get a value as a string, convert it to a string if possible
 // or return an empty string if the value is not set or cannot be converted.
+// GetString will return an empty string in case of failure.
 func (b Payload) GetString(key string) string {
 	switch v := b.Get(key).(type) {
 	case string:
@@ -73,6 +78,9 @@ func (b Payload) GetString(key string) string {
 	}
 }
 
+// GetInt will attempt to parse the requested key as an integer and return it.
+// If the value is a float or any other kind of number-y value, it will be
+// converted (truncated) and returned as an int, or 0 in case of failure.
 func (b Payload) GetInt(key string) int64 {
 	switch v := b.Get(key).(type) {
 	case bool:
@@ -108,6 +116,9 @@ func (b Payload) GetInt(key string) int64 {
 	}
 }
 
+// GetFloat will attempt to parse the requested key as a float and return it.
+// If the value is an int or any other kind of number-y value, it will be
+// converted to float64 and returned, or return 0 in case of failure.
 func (b Payload) GetFloat(key string) float64 {
 	switch v := b.Get(key).(type) {
 	case string:
@@ -137,6 +148,9 @@ func (b Payload) GetFloat(key string) float64 {
 	}
 }
 
+// GetNumericDate will return a time value based on the requested header, or a
+// zero time if the parsing failed or the key is not set. Check IsZero() for
+// success.
 func (b Payload) GetNumericDate(key string) time.Time {
 	if !b.Has(key) {
 		return time.Time{} // check IsZero() to see if invalid time was passed
