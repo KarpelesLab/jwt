@@ -10,11 +10,11 @@ import (
 
 // Token represents a JWT token
 type Token struct {
-	algo   Algo    // algo value, only used with New() to avoid lookups
-	header Header  // parsed if needed
-	body   Payload // parsed if needed
-	values []string
-	value  string
+	algo    Algo    // algo value, only used with New() to avoid lookups
+	header  Header  // parsed if needed
+	payload Payload // parsed if needed
+	values  []string
+	value   string
 }
 
 // New will return a fresh and empty token that can be filled with information
@@ -22,9 +22,9 @@ type Token struct {
 // the header will be set.
 func New(alg Algo) *Token {
 	return &Token{
-		algo:   alg,
-		header: map[string]string{"alg": alg.String()},
-		body:   make(Payload),
+		algo:    alg,
+		header:  map[string]string{"alg": alg.String()},
+		payload: make(Payload),
 	}
 }
 
@@ -96,8 +96,8 @@ func (tok *Token) Header() Header {
 // parsing failed, then this function will return nil. Payload methods such as
 // Get() and Set() can still be called without causing a panic.
 func (tok *Token) Payload() Payload {
-	if tok.body != nil {
-		return tok.body
+	if tok.payload != nil {
+		return tok.payload
 	}
 
 	str, err := base64.RawURLEncoding.DecodeString(tok.values[1])
@@ -107,18 +107,18 @@ func (tok *Token) Payload() Payload {
 
 	dec := json.NewDecoder(bytes.NewReader(str))
 	dec.UseNumber()
-	err = dec.Decode(&tok.body)
+	err = dec.Decode(&tok.payload)
 	if err != nil {
 		return nil
 	}
 
-	return tok.body
+	return tok.payload
 }
 
 // SetRawPayload sets the raw value of payload to any kind of data that can be
 // later signed. This can be used to store non-JSON data in the payload.
 func (tok *Token) SetRawPayload(payload []byte, cty string) error {
-	tok.body = nil
+	tok.payload = nil
 	if len(tok.values) < 2 {
 		// reset tok.values
 		tok.values = []string{"", ""}
@@ -135,8 +135,8 @@ func (tok *Token) SetRawPayload(payload []byte, cty string) error {
 // GetRawPayload returns the raw value for the token's payload, or an error if
 // it could not be decoded.
 func (tok *Token) GetRawPayload() ([]byte, error) {
-	if tok.body != nil {
-		return json.Marshal(tok.body)
+	if tok.payload != nil {
+		return json.Marshal(tok.payload)
 	}
 	if len(tok.values) < 2 {
 		// no payload, return empty json object
@@ -169,7 +169,7 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	}
 	values[0] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
-	if tok.body == nil {
+	if tok.payload == nil {
 		if len(tok.values) < 2 {
 			values[1] = base64.RawURLEncoding.EncodeToString([]byte("{}")) // empty json payload
 		} else {
@@ -211,7 +211,7 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 // stopping at the first failure. If all verifications are successful, nil will
 // be returned.
 func (tok *Token) Verify(opts ...VerifyOption) error {
-	// check if we have header & body
+	// check if we have header & payload
 	if tok.Header() == nil {
 		return ErrNoHeader
 	}
