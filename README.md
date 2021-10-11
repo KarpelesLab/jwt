@@ -17,6 +17,7 @@ There are some things that still remain to be done:
 * [ ] Implement more verification methods
 * [ ] Test, test and test
 * [ ] Write more documentation
+* [ ] Support encrypted JWT tokens
 
 # Examples
 
@@ -27,7 +28,7 @@ import _ "crypto/sha256"
 
 priv := []byte("this is a hmac key")
 tok := jwt.New(jwt.HS256)
-tok.Header().Set("typ", "JWT") // syntax to set header values
+tok.Header().Set("kid", keyId) // syntax to set header values
 tok.Payload().Set("iss", "myself")
 tok.Payload().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
 sign, err := tok.Sign(priv)
@@ -48,4 +49,16 @@ if err != nil {
 	...
 }
 log.Printf("token iss value = %s", token.Payload().Get("iss"))
+```
+
+## Create a non-json token
+
+```go
+import _ "crypto/sha256"
+
+priv := []byte("this is a hmac key")
+tok := jwt.New(jwt.HS256)
+tok.Header().Set("kid", keyId)
+tok.SetRawPayload(binData, "octet-stream") // can pass cty="" to not set content type
+sign, err := tok.Sign(priv)
 ```

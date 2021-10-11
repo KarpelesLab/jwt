@@ -58,6 +58,20 @@ func (tok *Token) GetKeyId() string {
 	return tok.Header().Get("kid")
 }
 
+// GetContentType returns the value of "cty" claim in the token's header, ro
+// "application/jwt" if not set. It will prepend "application/" to values that
+// have no slashes in them as defined in RFC 7515, Section 4.1.10.
+func (tok *Token) GetContentType() string {
+	cty := tok.Header().Get("cty")
+	if cty == "" {
+		return "application/jwt"
+	}
+	if strings.IndexByte(cty, '/') == -1 {
+		return "application/" + cty
+	}
+	return cty
+}
+
 // Header returns the decoded header part of the token and is useful to read
 // the key id value for the signature.
 func (tok *Token) Header() Header {
@@ -101,6 +115,36 @@ func (tok *Token) Payload() Payload {
 	return tok.body
 }
 
+// SetRawPayload sets the raw value of payload to any kind of data that can be
+// later signed. This can be used to store non-JSON data in the payload.
+func (tok *Token) SetRawPayload(payload []byte, cty string) error {
+	tok.body = nil
+	if len(tok.values) < 2 {
+		// reset tok.values
+		tok.values = []string{"", ""}
+	}
+
+	tok.values[1] = base64.RawURLEncoding.EncodeToString(payload)
+
+	if cty != "" {
+		return tok.Header().Set("cty", cty)
+	}
+	return nil
+}
+
+// GetRawPayload returns the raw value for the token's payload, or an error if
+// it could not be decoded.
+func (tok *Token) GetRawPayload() ([]byte, error) {
+	if tok.body != nil {
+		return json.Marshal(tok.body)
+	}
+	if len(tok.values) < 2 {
+		// no payload, return empty json object
+		return []byte("{}"), nil
+	}
+	return base64.RawURLEncoding.DecodeString(tok.values[1])
+}
+
 // getSignString is used by VerifySignature to get the part of the string that
 // is used to generate a signature. It avoids duplicating memory in order to
 // provide better performance.
@@ -125,11 +169,19 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	}
 	values[0] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
-	jsonVal, err = json.Marshal(tok.Payload())
-	if err != nil {
-		return "", err
+	if tok.body == nil {
+		if len(tok.values) < 2 {
+			values[1] = base64.RawURLEncoding.EncodeToString([]byte("{}")) // empty json payload
+		} else {
+			values[1] = tok.values[1] // copy existing value as maybe not JSON
+		}
+	} else {
+		jsonVal, err = json.Marshal(tok.Payload())
+		if err != nil {
+			return "", err
+		}
+		values[1] = base64.RawURLEncoding.EncodeToString(jsonVal)
 	}
-	values[1] = base64.RawURLEncoding.EncodeToString(jsonVal)
 
 	// build buf
 	buf := &bytes.Buffer{}
