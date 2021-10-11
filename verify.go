@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"crypto"
-	"encoding/base64"
 	"fmt"
 	"time"
 )
@@ -32,10 +31,7 @@ func VerifyAlgo(algo ...Algo) VerifyOption {
 
 func VerifySignature(pub crypto.PublicKey) VerifyOption {
 	return func(tok *Token) error {
-		if len(tok.values) < 3 {
-			return ErrNoSignature
-		}
-		sign, err := base64.RawURLEncoding.DecodeString(tok.values[2])
+		sign, err := tok.GetRawSignature()
 		if err != nil {
 			return fmt.Errorf("jwt: failed to read signature: %w", err)
 		}
@@ -46,7 +42,7 @@ func VerifySignature(pub crypto.PublicKey) VerifyOption {
 			return ErrInvalidToken // unsupported algo
 		}
 
-		return algo.Verify(tok.getSignString(), sign, pub)
+		return algo.Verify(tok.GetSignString(), sign, pub)
 	}
 }
 

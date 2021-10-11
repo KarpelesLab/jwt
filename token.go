@@ -145,10 +145,19 @@ func (tok *Token) GetRawPayload() ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(tok.values[1])
 }
 
-// getSignString is used by VerifySignature to get the part of the string that
+// GetRawSignature returns the raw signature of a parsed token or of a freshly
+// signed token.
+func (tok *Token) GetRawSignature() ([]byte, error) {
+	if len(tok.values) < 3 {
+		return nil, ErrNoSignature
+	}
+	return base64.RawURLEncoding.DecodeString(tok.values[2])
+}
+
+// GetSignString is used by VerifySignature to get the part of the string that
 // is used to generate a signature. It avoids duplicating memory in order to
 // provide better performance.
-func (tok Token) getSignString() []byte {
+func (tok Token) GetSignString() []byte {
 	ln := len(tok.values[0]) + len(tok.values[1]) + 1
 	return []byte(tok.value[:ln])
 }
