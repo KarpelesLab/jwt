@@ -18,6 +18,7 @@ There are some things that still remain to be done:
 * [ ] Test, test and test
 * [ ] Write more documentation
 * [ ] Support encrypted JWT tokens
+* [ ] Apply Payload to go objects using reflect
 
 # Examples
 
