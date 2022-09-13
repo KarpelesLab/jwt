@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/ed25519"
+	"io"
 )
 
 type ed25519Algo struct{}
@@ -19,7 +20,7 @@ func (h ed25519Algo) Hash() crypto.Hash {
 	return crypto.Hash(0)
 }
 
-func (h ed25519Algo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+func (h ed25519Algo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.(crypto.Signer)
 	if !ok {
 		return nil, ErrInvalidSignKey
@@ -30,7 +31,7 @@ func (h ed25519Algo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 		return nil, ErrInvalidSignKey
 	}
 
-	return pk.Sign(nil, buf, h.Hash())
+	return pk.Sign(rand, buf, h.Hash())
 }
 
 func (h ed25519Algo) Verify(buf, sign []byte, pub crypto.PublicKey) error {

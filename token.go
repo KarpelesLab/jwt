@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"strings"
 )
 
@@ -163,7 +164,7 @@ func (tok Token) GetSignString() []byte {
 }
 
 // Sign will generate the token and sign it, making it ready for distribution.
-func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
+func (tok *Token) Sign(rand io.Reader, priv crypto.PrivateKey) (string, error) {
 	algo := tok.GetAlgo()
 	if algo == nil {
 		return "", ErrInvalidToken
@@ -199,7 +200,7 @@ func (tok *Token) Sign(priv crypto.PrivateKey) (string, error) {
 	buf.WriteString(values[1])
 
 	// actual signature
-	sign, err := algo.Sign(buf.Bytes(), priv)
+	sign, err := algo.Sign(rand, buf.Bytes(), priv)
 	if err != nil {
 		return "", err
 	}

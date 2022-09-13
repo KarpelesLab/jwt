@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"fmt"
+	"io"
 )
 
 type ecdsaAlgo crypto.Hash
@@ -27,7 +28,7 @@ func (h ecdsaAlgo) Hash() crypto.Hash {
 	return crypto.Hash(h)
 }
 
-func (h ecdsaAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+func (h ecdsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.(crypto.Signer)
 	if !ok {
 		return nil, ErrInvalidSignKey
@@ -44,7 +45,7 @@ func (h ecdsaAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	hash := h.Hash().New()
 	hash.Write(buf)
 
-	return pk.Sign(nil, hash.Sum(nil), h.Hash())
+	return pk.Sign(rand, hash.Sum(nil), h.Hash())
 }
 
 func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {

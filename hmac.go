@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"fmt"
+	"io"
 )
 
 type hmacAlgo crypto.Hash
@@ -27,7 +28,7 @@ func (h hmacAlgo) Hash() crypto.Hash {
 	return crypto.Hash(h)
 }
 
-func (h hmacAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+func (h hmacAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.([]byte)
 	if !ok {
 		return nil, ErrInvalidSignKey

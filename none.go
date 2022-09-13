@@ -1,6 +1,9 @@
 package jwt
 
-import "crypto"
+import (
+	"crypto"
+	"io"
+)
 
 type noneAlgo struct{}
 
@@ -8,7 +11,7 @@ func (n noneAlgo) String() string {
 	return "none"
 }
 
-func (n noneAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+func (n noneAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	return nil, nil
 }
 

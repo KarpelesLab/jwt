@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"fmt"
+	"io"
 )
 
 type rsaPssAlgo crypto.Hash
@@ -27,7 +28,7 @@ func (h rsaPssAlgo) Hash() crypto.Hash {
 	return crypto.Hash(h)
 }
 
-func (h rsaPssAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
+func (h rsaPssAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.(crypto.Signer)
 	if !ok {
 		return nil, ErrInvalidSignKey
@@ -44,7 +45,7 @@ func (h rsaPssAlgo) Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	hash := h.Hash().New()
 	hash.Write(buf)
 
-	return pk.Sign(nil, hash.Sum(nil), &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto, Hash: h.Hash()})
+	return pk.Sign(rand, hash.Sum(nil), &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto, Hash: h.Hash()})
 }
 
 func (h rsaPssAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {

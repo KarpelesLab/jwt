@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto"
+	"io"
 )
 
 // Algo is a jwt signature algorithm. Typical values include HS256 and ES256.
@@ -15,7 +16,7 @@ type Algo interface {
 	// Sign should sign the provided buffer, and return the resulting
 	// signature. If the private key isn't of the appropriate type, an
 	// error should be triggered.
-	Sign(buf []byte, priv crypto.PrivateKey) ([]byte, error)
+	Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error)
 
 	// Verify must verify the provided signature and return an error
 	// if the public key is not of the appropriate type or the signature
