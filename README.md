@@ -46,7 +46,7 @@ tok := jwt.New(jwt.HS256)
 tok.Header().Set("kid", keyId) // syntax to set header values
 tok.Payload().Set("iss", "myself")
 tok.Payload().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
-signedToken, err := tok.Sign(priv)
+signedToken, err := tok.Sign(rand.Reader, priv)
 ```
 
 ## Verify a token
