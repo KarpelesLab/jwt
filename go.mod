@@ -1,3 +1,3 @@
 module github.com/KarpelesLab/jwt
 
-go 1.18
+go 1.19

@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-type Payload map[string]interface{}
+type Payload map[string]any
 
 // Get is a safe get that will return nil if the body itself is null or the
 // value is nil. If you want to check if a value exists or not, use Has().
-func (b Payload) Get(key string) interface{} {
+func (b Payload) Get(key string) any {
 	if b == nil {
 		return nil
 	}
@@ -23,7 +23,7 @@ func (b Payload) Get(key string) interface{} {
 
 // Set will set the specified value in the payload. It will return an error if
 // the payload failed to parse, for example because it is not a JSON object.
-func (b Payload) Set(key string, value interface{}) error {
+func (b Payload) Set(key string, value any) error {
 	if b == nil {
 		return ErrNoPayload
 	}
