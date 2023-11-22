@@ -17,6 +17,7 @@ type JWK struct {
 	PublicKey  crypto.PublicKey  `json:"-"`
 	KeyID      string            `json:"kid,omitempty"`
 	Algo       string            `json:"alg,omitempty"` // RSA-OAEP-256
+	Use        string            `json:"use,omitempty"`
 	Ext        bool              `json:"ext,omitempty"`
 	KeyOps     []string          `json:"key_ops,omitempty"`
 }
@@ -141,6 +142,12 @@ func (jwk *JWK) ApplyValues(values map[string]any) error {
 			jwk.KeyID = string(s)
 		}
 	}
+	if alg, ok := values["alg"].(string); ok {
+		jwk.Algo = alg
+	}
+	if use, ok := values["use"].(string); ok {
+		jwk.Use = use
+	}
 
 	return nil
 }
@@ -157,6 +164,9 @@ func (jwk *JWK) ExportValues() map[string]any {
 	}
 	if jwk.Algo != "" {
 		res["alg"] = jwk.Algo
+	}
+	if jwk.Use != "" {
+		res["use"] = jwk.Use
 	}
 	if jwk.Ext {
 		res["ext"] = true
