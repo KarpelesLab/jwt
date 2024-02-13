@@ -3,8 +3,13 @@ package jwt
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"io"
+	"math/big"
+
+	"golang.org/x/crypto/cryptobyte"
+	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
 type ecdsaAlgo crypto.Hash
@@ -22,6 +27,25 @@ func (h ecdsaAlgo) String() string {
 	default:
 		return ""
 	}
+}
+
+// digitLength returns the length of each R and S value in signatures for the given
+// algorithm.
+func (h ecdsaAlgo) digitLength() int {
+	switch h.Hash() {
+	case crypto.SHA224:
+		return 28
+	case crypto.SHA256:
+		// ES256
+		return 32
+	case crypto.SHA384:
+		// ES384
+		return 48
+	case crypto.SHA512:
+		// ES512
+		return 66
+	}
+	return 0
 }
 
 func (h ecdsaAlgo) Hash() crypto.Hash {
@@ -45,7 +69,32 @@ func (h ecdsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]b
 	hash := h.Hash().New()
 	hash.Write(buf)
 
-	return pk.Sign(rand, hash.Sum(nil), h.Hash())
+	buf, err := pk.Sign(rand, hash.Sum(nil), h.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc7518#section-3.4
+	ln := h.digitLength()
+	if len(buf) == ln*2 {
+		// value is already good
+		return buf, nil
+	}
+
+	// Sign() likely returned a ASN1 object, we need to decode it and return only R,S
+	r, s, err := parseEcdsaSignature(buf)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse ECDSA signature: %w", err)
+	}
+
+	if len(r) > ln || len(s) > ln {
+		return nil, fmt.Errorf("bad data length for signature (length r=%d s=%d max=%d)", len(r), len(s), ln)
+	}
+
+	finalSig := make([]byte, ln*2)
+	copy(finalSig[ln-len(r):ln], r)
+	copy(finalSig[ln+ln-len(s):], s)
+	return finalSig, nil
 }
 
 func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
@@ -60,8 +109,22 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	hash := h.Hash().New()
 	hash.Write(buf)
 
-	if !ecdsa.VerifyASN1(pk, hash.Sum(nil), sign) {
-		return ErrInvalidSignature
+	ln := h.digitLength()
+
+	if len(buf) == ln*2 {
+		// proper ECDSA signature
+		// func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool
+		r := big.NewInt(0).SetBytes(sign[:ln])
+		s := big.NewInt(0).SetBytes(sign[ln:])
+		if !ecdsa.Verify(pk, hash.Sum(nil), r, s) {
+			return ErrInvalidSignature
+		}
+	} else {
+		// we're keeping this for now for backward compatibility - those signatures are not ECDSA valid
+		// TODO throw error about ecdsa signature length
+		if !ecdsa.VerifyASN1(pk, hash.Sum(nil), sign) {
+			return ErrInvalidSignature
+		}
 	}
 
 	return nil
@@ -70,4 +133,18 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 func (h ecdsaAlgo) reg() Algo {
 	RegisterAlgo(h)
 	return h
+}
+
+// https://cs.opensource.google/go/go/+/refs/tags/go1.22.0:src/crypto/ecdsa/ecdsa.go;l=549
+func parseEcdsaSignature(sig []byte) (r, s []byte, err error) {
+	var inner cryptobyte.String
+	input := cryptobyte.String(sig)
+	if !input.ReadASN1(&inner, asn1.SEQUENCE) ||
+		!input.Empty() ||
+		!inner.ReadASN1Integer(&r) ||
+		!inner.ReadASN1Integer(&s) ||
+		!inner.Empty() {
+		return nil, nil, errors.New("invalid ASN.1")
+	}
+	return r, s, nil
 }

@@ -13,7 +13,7 @@ func TestHmac(t *testing.T) {
 	tok := jwt.New(jwt.HS256)
 	tok.Payload().Set("iss", "myself")
 	tok.Payload().Set("exp", time.Now().Add(365*24*time.Hour).Unix())
-	sign, err := tok.Sign(priv)
+	sign, err := tok.Sign(nil, priv)
 
 	if err != nil {
 		t.Fatalf("failed to sign: %s", err)
