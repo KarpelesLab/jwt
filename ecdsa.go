@@ -14,6 +14,10 @@ import (
 
 type ecdsaAlgo crypto.Hash
 
+var (
+	DeprecatedAllowEcdsaASN1Signatures = true // this will turn to false eventually
+)
+
 func (h ecdsaAlgo) String() string {
 	switch h.Hash() {
 	case crypto.SHA224:
@@ -111,20 +115,21 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 
 	ln := h.digitLength()
 
-	if len(sign) == ln*2 {
-		// proper ECDSA signature
-		// func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool
-		r := big.NewInt(0).SetBytes(sign[:ln])
-		s := big.NewInt(0).SetBytes(sign[ln:])
-		if !ecdsa.Verify(pk, hash.Sum(nil), r, s) {
-			return ErrInvalidSignature
+	if len(sign) != ln*2 {
+		if DeprecatedAllowEcdsaASN1Signatures {
+			// we're keeping this for now for backward compatibility - those signatures are not RFC7518 compliant
+			if !ecdsa.VerifyASN1(pk, hash.Sum(nil), sign) {
+				return ErrInvalidSignature
+			}
 		}
-	} else {
-		// we're keeping this for now for backward compatibility - those signatures are not ECDSA valid
-		// TODO throw error about ecdsa signature length
-		if !ecdsa.VerifyASN1(pk, hash.Sum(nil), sign) {
-			return ErrInvalidSignature
-		}
+		return ErrInvalidSignatureLength
+	}
+
+	// proper ECDSA signature
+	r := big.NewInt(0).SetBytes(sign[:ln])
+	s := big.NewInt(0).SetBytes(sign[ln:])
+	if !ecdsa.Verify(pk, hash.Sum(nil), r, s) {
+		return ErrInvalidSignature
 	}
 
 	return nil

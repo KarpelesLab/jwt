@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/hex"
@@ -130,6 +131,58 @@ func (jwk *JWK) ApplyValues(values map[string]any) error {
 			E: int(e),
 		}
 		break
+	case "EC":
+		var crv elliptic.Curve
+		switch values["crv"].(string) {
+		case "P-224":
+			crv = elliptic.P224()
+		case "P-256":
+			crv = elliptic.P256()
+		case "P-384":
+			crv = elliptic.P384()
+		case "P-521":
+			crv = elliptic.P521()
+		default:
+			return fmt.Errorf("unsupported curve %s", values["crv"])
+		}
+
+		// x, y and d in private key, only x and y if public
+		x, err := jwkBase64ToBigInt(values["x"])
+		if err != nil {
+			return fmt.Errorf("while reading x: %w", err)
+		}
+		y, err := jwkBase64ToBigInt(values["y"])
+		if err != nil {
+			return fmt.Errorf("while reading y: %w", err)
+		}
+		dA, ok := values["d"]
+		if ok {
+			// private key
+			dB, err := jwkBase64ToBigInt(dA)
+			if err != nil {
+				return fmt.Errorf("while reading d: %w", err)
+			}
+			res := &ecdsa.PrivateKey{
+				PublicKey: ecdsa.PublicKey{
+					Curve: crv,
+					X:     x,
+					Y:     y,
+				},
+				D: dB,
+			}
+			// TODO validate key?
+			jwk.PrivateKey = res
+			jwk.PublicKey = res.PublicKey
+			break
+		}
+
+		// public only
+		jwk.PublicKey = &ecdsa.PublicKey{
+			Curve: crv,
+			X:     x,
+			Y:     y,
+		}
+		break
 	default:
 		return fmt.Errorf("unsupported value for kty=%s", kty)
 	}
@@ -193,6 +246,8 @@ func (jwk *JWK) ExportRequiredValues() map[string]any {
 				"kty": "EC",
 				"crv": v.Curve.Params().Name,
 				"d":   jwkBigIntToBase64(v.D),
+				"x":   jwkBigIntToBase64(v.PublicKey.X),
+				"y":   jwkBigIntToBase64(v.PublicKey.Y),
 			}
 		}
 	}
