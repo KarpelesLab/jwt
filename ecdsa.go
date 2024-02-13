@@ -111,7 +111,7 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 
 	ln := h.digitLength()
 
-	if len(buf) == ln*2 {
+	if len(sign) == ln*2 {
 		// proper ECDSA signature
 		// func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool
 		r := big.NewInt(0).SetBytes(sign[:ln])
