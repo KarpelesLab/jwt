@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -37,6 +38,16 @@ func (jwk *JWK) Public() crypto.PublicKey {
 		}
 	}
 	return jwk.PublicKey
+}
+
+func (jwk *JWK) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if jwk.PrivateKey == nil {
+		return nil, ErrNoPrivateKey
+	}
+	if sig, ok := jwk.PrivateKey.(crypto.Signer); ok {
+		return sig.Sign(rand, digest, opts)
+	}
+	return nil, ErrNoPrivateKey
 }
 
 func (jwk *JWK) ThumbprintHex(method crypto.Hash) string {

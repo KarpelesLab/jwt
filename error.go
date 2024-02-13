@@ -11,6 +11,8 @@ var (
 	ErrHashNotAvailable       = errors.New("jwt: hash method not available")
 	ErrNoHeader               = errors.New("jwt: header is not available (parsing failed?)")
 	ErrNoPayload              = errors.New("jwt: payload is not available (parsing failed?)")
+	ErrInvalidPublicKey       = errors.New("jwt: invalid public key provided")
+	ErrNoPrivateKey           = errors.New("jwt: private key is missing")
 
 	ErrVerifyMissing = errors.New("jwt: a claim required for verification is missing")
 	ErrVerifyFailed  = errors.New("jwt: claim verification has failed")

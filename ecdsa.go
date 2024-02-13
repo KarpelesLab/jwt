@@ -102,9 +102,13 @@ func (h ecdsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]b
 }
 
 func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
+	if obj, ok := pub.(interface{ Public() crypto.PublicKey }); ok {
+		pub = obj.Public()
+	}
+
 	pk, ok := pub.(*ecdsa.PublicKey)
 	if !ok {
-		return ErrInvalidSignature
+		return fmt.Errorf("%w: unknown type %T", ErrInvalidPublicKey, pub)
 	}
 	if !h.Hash().Available() {
 		return fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
