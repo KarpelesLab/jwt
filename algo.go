@@ -2,6 +2,10 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
+	"fmt"
 	"io"
 )
 
@@ -69,4 +73,39 @@ func parseAlgo(v string) Algo {
 		return a
 	}
 	return nil
+}
+
+// GetAlgoForSigner will guess the correct algorithm for a given [crypto.PrivateKey]
+func GetAlgoForSigner(s crypto.PrivateKey) (Algo, error) {
+	if pub, ok := s.(interface{ Public() crypto.PublicKey }); ok {
+		switch pubkey := pub.Public().(type) {
+		case *ecdsa.PublicKey:
+			switch pubkey.Curve.Params().Name {
+			case "P-256":
+				return ES256, nil
+			case "P-384":
+				return ES384, nil
+			case "P-521":
+				return ES512, nil
+			default:
+				return nil, fmt.Errorf("no known jwt algorithm for ECDSA curve %s", pubkey.Curve.Params().Name)
+			}
+		case ed25519.PublicKey:
+			return EdDSA, nil
+		case *rsa.PublicKey:
+			switch pubkey.Size() {
+			case 32:
+				return RS256, nil
+			case 48:
+				return RS384, nil
+			case 64:
+				return RS512, nil
+			default:
+				return nil, fmt.Errorf("unsupported RSA key size=%d", pubkey.Size())
+			}
+		default:
+			return nil, fmt.Errorf("unsupported public key type %T", pubkey)
+		}
+	}
+	return nil, fmt.Errorf("unsupported private key type %T", s)
 }

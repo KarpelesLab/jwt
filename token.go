@@ -20,8 +20,19 @@ type Token struct {
 
 // New will return a fresh and empty token that can be filled with information
 // to be later signed using the Sign method. By default only the "alg" value of
-// the header will be set.
-func New(alg Algo) *Token {
+// the header will be set if alg was passed.
+func New(algopt ...Algo) *Token {
+	var alg Algo
+	if len(algopt) > 0 {
+		alg = algopt[0]
+	}
+
+	if alg == nil {
+		return &Token{
+			header:  make(map[string]string),
+			payload: make(Payload),
+		}
+	}
 	return &Token{
 		algo:    alg,
 		header:  map[string]string{"alg": alg.String()},
@@ -167,7 +178,13 @@ func (tok Token) GetSignString() []byte {
 func (tok *Token) Sign(rand io.Reader, priv crypto.PrivateKey) (string, error) {
 	algo := tok.GetAlgo()
 	if algo == nil {
-		return "", ErrInvalidToken
+		var err error
+		algo, err = GetAlgoForSigner(priv)
+		if err != nil {
+			return "", err
+		}
+		tok.algo = algo
+		tok.Header().Set("alg", algo.String())
 	}
 
 	values := make([]string, 2, 3)
