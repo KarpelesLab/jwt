@@ -12,21 +12,23 @@ import (
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
-type ecdsaAlgo crypto.Hash
+type ecdsaAlgo int
 
 var (
 	DeprecatedAllowEcdsaASN1Signatures = true // this will turn to false eventually
 )
 
 func (h ecdsaAlgo) String() string {
-	switch h.Hash() {
-	case crypto.SHA224:
+	switch h {
+	case ES224:
 		return "ES224"
-	case crypto.SHA256:
+	case ES256:
 		return "ES256"
-	case crypto.SHA384:
+	case ES256K:
+		return "ES256K"
+	case ES384:
 		return "ES384"
-	case crypto.SHA512:
+	case ES512:
 		return "ES512"
 	default:
 		return ""
@@ -53,7 +55,17 @@ func (h ecdsaAlgo) digitLength() int {
 }
 
 func (h ecdsaAlgo) Hash() crypto.Hash {
-	return crypto.Hash(h)
+	switch h {
+	case ES224:
+		return crypto.SHA224
+	case ES256, ES256K:
+		return crypto.SHA256
+	case ES384:
+		return crypto.SHA384
+	case ES512:
+		return crypto.SHA512
+	}
+	return crypto.Hash(0)
 }
 
 func (h ecdsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
@@ -62,9 +74,14 @@ func (h ecdsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]b
 		return nil, ErrInvalidSignKey
 	}
 
-	// ensure public key is a *rsa.PublicKey
-	if _, ok := pk.Public().(*ecdsa.PublicKey); !ok {
-		return nil, ErrInvalidSignKey
+	// ensure public key is a *ecdsa.PublicKey
+	switch h {
+	case ES256K:
+		// skip test since we want to allow secp256k1 key, maybe just check the curve?
+	default:
+		if _, ok := pk.Public().(*ecdsa.PublicKey); !ok {
+			return nil, ErrInvalidSignKey
+		}
 	}
 	if !h.Hash().Available() {
 		return nil, fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
@@ -106,10 +123,6 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 		pub = obj.Public()
 	}
 
-	pk, ok := pub.(*ecdsa.PublicKey)
-	if !ok {
-		return fmt.Errorf("%w: unknown type %T", ErrInvalidPublicKey, pub)
-	}
 	if !h.Hash().Available() {
 		return fmt.Errorf("%w: %s", ErrHashNotAvailable, h.Hash().String())
 	}
@@ -119,6 +132,10 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 
 	ln := h.digitLength()
 
+	pk, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return fmt.Errorf("%w: unknown type %T", ErrInvalidPublicKey, pub)
+	}
 	if len(sign) != ln*2 {
 		if DeprecatedAllowEcdsaASN1Signatures {
 			// we're keeping this for now for backward compatibility - those signatures are not RFC7518 compliant

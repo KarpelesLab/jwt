@@ -46,9 +46,11 @@ var (
 	PS384 Algo = rsaPssAlgo(crypto.SHA384).reg()
 	PS512 Algo = rsaPssAlgo(crypto.SHA512).reg()
 
-	ES256 Algo = ecdsaAlgo(crypto.SHA256).reg()
-	ES384 Algo = ecdsaAlgo(crypto.SHA384).reg()
-	ES512 Algo = ecdsaAlgo(crypto.SHA512).reg()
+	ES224  Algo = ecdsaAlgo(1).reg()
+	ES256  Algo = ecdsaAlgo(2).reg()
+	ES384  Algo = ecdsaAlgo(3).reg()
+	ES512  Algo = ecdsaAlgo(4).reg()
+	ES256K Algo = ecdsaAlgo(5).reg()
 
 	EdDSA Algo = ed25519Algo{}.reg()
 	None  Algo = noneAlgo{}.reg()
@@ -81,6 +83,8 @@ func GetAlgoForSigner(s crypto.PrivateKey) (Algo, error) {
 		switch pubkey := pub.Public().(type) {
 		case *ecdsa.PublicKey:
 			switch pubkey.Curve.Params().Name {
+			case "P-224":
+				return ES224, nil
 			case "P-256":
 				return ES256, nil
 			case "P-384":
