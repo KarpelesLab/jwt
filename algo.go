@@ -46,11 +46,11 @@ var (
 	PS384 Algo = rsaPssAlgo(crypto.SHA384).reg()
 	PS512 Algo = rsaPssAlgo(crypto.SHA512).reg()
 
-	ES224  Algo = ecdsaAlgo(1).reg()
-	ES256  Algo = ecdsaAlgo(2).reg()
-	ES384  Algo = ecdsaAlgo(3).reg()
-	ES512  Algo = ecdsaAlgo(4).reg()
-	ES256K Algo = ecdsaAlgo(5).reg()
+	ES224  Algo = ecdsaAlgo("ES224").reg()
+	ES256  Algo = ecdsaAlgo("ES256").reg()
+	ES384  Algo = ecdsaAlgo("ES384").reg()
+	ES512  Algo = ecdsaAlgo("ES512").reg()
+	ES256K Algo = ecdsaAlgo("ES256K").reg()
 
 	EdDSA Algo = ed25519Algo{}.reg()
 	None  Algo = noneAlgo{}.reg()

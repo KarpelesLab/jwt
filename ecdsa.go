@@ -12,27 +12,14 @@ import (
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
-type ecdsaAlgo int
+type ecdsaAlgo string
 
 var (
 	DeprecatedAllowEcdsaASN1Signatures = true // this will turn to false eventually
 )
 
 func (h ecdsaAlgo) String() string {
-	switch h {
-	case ES224:
-		return "ES224"
-	case ES256:
-		return "ES256"
-	case ES256K:
-		return "ES256K"
-	case ES384:
-		return "ES384"
-	case ES512:
-		return "ES512"
-	default:
-		return ""
-	}
+	return string(h)
 }
 
 // digitLength returns the length of each R and S value in signatures for the given
@@ -55,14 +42,14 @@ func (h ecdsaAlgo) digitLength() int {
 }
 
 func (h ecdsaAlgo) Hash() crypto.Hash {
-	switch h {
-	case ES224:
+	switch h.String() {
+	case "ES224":
 		return crypto.SHA224
-	case ES256, ES256K:
+	case "ES256", "ES256K":
 		return crypto.SHA256
-	case ES384:
+	case "ES384":
 		return crypto.SHA384
-	case ES512:
+	case "ES512":
 		return crypto.SHA512
 	}
 	return crypto.Hash(0)
