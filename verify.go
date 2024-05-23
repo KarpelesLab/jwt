@@ -13,9 +13,9 @@ type VerifyOption func(*Token) error
 // signature scheme and should always be used.
 func VerifyAlgo(algo ...Algo) VerifyOption {
 	return func(tok *Token) error {
-		tokAlgo := tok.GetAlgo()
-		if tokAlgo == nil {
-			return ErrInvalidToken
+		tokAlgo, err := tok.GetAlgoErr()
+		if err != nil {
+			return err
 		}
 
 		// compare algo string in case we have two instances of the same object
@@ -44,9 +44,9 @@ func VerifySignature(pub crypto.PublicKey) VerifyOption {
 			return fmt.Errorf("jwt: failed to read signature: %w", err)
 		}
 
-		algo := tok.GetAlgo()
-		if algo == nil {
-			return ErrInvalidToken // unsupported algo
+		algo, err := tok.GetAlgoErr()
+		if err != nil {
+			return err
 		}
 
 		return algo.Verify(tok.GetSignString(), sign, pub)
