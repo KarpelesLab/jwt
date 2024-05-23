@@ -38,6 +38,11 @@ func (h Header) Has(key string) bool {
 	return ok
 }
 
+// Unset removes a value from the header
+func (h Header) Unset(key string) {
+	delete(h, key)
+}
+
 // GetAlgo will return a Algo based on the alg value of the header, or nil if
 // the algo is invalid or unknown. This will also work with custom algo as long
 // as RegisterAlgo() was called.
