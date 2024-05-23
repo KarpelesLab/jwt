@@ -55,7 +55,7 @@ var (
 	EdDSA Algo = ed25519Algo{}.reg()
 	None  Algo = noneAlgo{}.reg()
 
-	algoMap = map[string]Algo{}
+	algoMap = make(map[string]Algo)
 )
 
 // RegisterAlgo allows registration of custom algorithms. We assume this will

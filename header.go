@@ -1,5 +1,7 @@
 package jwt
 
+import "fmt"
+
 // Header type holds values from the token's header for easy access
 type Header map[string]string
 
@@ -39,6 +41,14 @@ func (h Header) Has(key string) bool {
 // GetAlgo will return a Algo based on the alg value of the header, or nil if
 // the algo is invalid or unknown. This will also work with custom algo as long
 // as RegisterAlgo() was called.
-func (h Header) GetAlgo() Algo {
-	return parseAlgo(h.Get("alg"))
+func (h Header) GetAlgo() (Algo, error) {
+	alg := h.Get("alg")
+	if alg == "" {
+		return nil, ErrAlgNotSet
+	}
+	algObj := parseAlgo(alg)
+	if algObj == nil {
+		return nil, fmt.Errorf("%w: %s", ErrUnknownAlg, alg)
+	}
+	return algObj, nil
 }

@@ -5,13 +5,13 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 )
 
 // Token represents a JWT token
 type Token struct {
-	algo    Algo    // algo value, only used with New() to avoid lookups
 	header  Header  // parsed if needed
 	payload Payload // parsed if needed
 	values  []string
@@ -34,7 +34,6 @@ func New(algopt ...Algo) *Token {
 		}
 	}
 	return &Token{
-		algo:    alg,
 		header:  map[string]string{"alg": alg.String()},
 		payload: make(Payload),
 	}
@@ -59,9 +58,13 @@ func ParseString(value string) (*Token, error) {
 // GetAlgo will determine the algorithm in use from the header and return the
 // appropriate Algo object, or nil if unknown or no algo is specified.
 func (tok *Token) GetAlgo() Algo {
-	if tok.algo != nil {
-		return tok.algo
-	}
+	res, _ := tok.Header().GetAlgo()
+	return res
+}
+
+// GetAlgoErr performs similarly to GetAlgo but also return an error that can
+// be either ErrAlgNotSet or ErrUnknownAlg
+func (tok *Token) GetAlgoErr() (Algo, error) {
 	return tok.Header().GetAlgo()
 }
 
@@ -176,14 +179,18 @@ func (tok Token) GetSignString() []byte {
 
 // Sign will generate the token and sign it, making it ready for distribution.
 func (tok *Token) Sign(rand io.Reader, priv crypto.PrivateKey) (string, error) {
-	algo := tok.GetAlgo()
-	if algo == nil {
-		var err error
-		algo, err = GetAlgoForSigner(priv)
-		if err != nil {
+	algo, err := tok.GetAlgoErr()
+	if err != nil {
+		if !errors.Is(err, ErrAlgNotSet) {
 			return "", err
 		}
-		tok.algo = algo
+		// alg not set → we can guess it
+		algo, err = GetAlgoForSigner(priv)
+		if err != nil {
+			// failed to guess
+			return "", err
+		}
+		// set the alg header
 		tok.Header().Set("alg", algo.String())
 	}
 

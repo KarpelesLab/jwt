@@ -13,6 +13,8 @@ var (
 	ErrNoPayload              = errors.New("jwt: payload is not available (parsing failed?)")
 	ErrInvalidPublicKey       = errors.New("jwt: invalid public key provided")
 	ErrNoPrivateKey           = errors.New("jwt: private key is missing")
+	ErrAlgNotSet              = errors.New("jwt: alg has not been set in header")
+	ErrUnknownAlg             = errors.New("jwt: unrecognized alg value")
 
 	ErrVerifyMissing = errors.New("jwt: a claim required for verification is missing")
 	ErrVerifyFailed  = errors.New("jwt: claim verification has failed")
