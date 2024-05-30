@@ -97,16 +97,7 @@ func GetAlgoForSigner(s crypto.PrivateKey) (Algo, error) {
 		case ed25519.PublicKey:
 			return EdDSA, nil
 		case *rsa.PublicKey:
-			switch pubkey.Size() {
-			case 32:
-				return RS256, nil
-			case 48:
-				return RS384, nil
-			case 64:
-				return RS512, nil
-			default:
-				return nil, fmt.Errorf("unsupported RSA key size=%d", pubkey.Size())
-			}
+			return RS256, nil // for RSA hash size does not depend on key size, default to 256 bits
 		default:
 			return nil, fmt.Errorf("unsupported public key type %T", pubkey)
 		}
