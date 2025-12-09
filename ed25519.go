@@ -26,7 +26,7 @@ func (h ed25519Algo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([
 		return nil, ErrInvalidSignKey
 	}
 
-	// ensure public key is a *rsa.PublicKey
+	// ensure public key is a ed25519.PublicKey
 	if _, ok := pk.Public().(ed25519.PublicKey); !ok {
 		return nil, ErrInvalidSignKey
 	}
