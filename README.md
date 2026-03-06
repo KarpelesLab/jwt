@@ -1,6 +1,7 @@
 [![GoDoc](https://godoc.org/github.com/KarpelesLab/jwt?status.svg)](https://godoc.org/github.com/KarpelesLab/jwt)
 [![Build Status](https://github.com/KarpelesLab/jwt/actions/workflows/test.yml/badge.svg)](https://github.com/KarpelesLab/jwt/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/KarpelesLab/jwt/badge.svg?branch=master)](https://coveralls.io/github/KarpelesLab/jwt?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KarpelesLab/jwt)](https://goreportcard.com/report/github.com/KarpelesLab/jwt)
 
 # Yet another jwt lib
 
