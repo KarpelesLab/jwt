@@ -60,7 +60,7 @@ func (b Payload) GetString(key string) string {
 	case json.Number:
 		return v.String()
 	case nil:
-		return "" // null or non existant
+		return "" // null or non existent
 	default:
 		// use reflect
 		rv := reflect.ValueOf(v)
