@@ -59,6 +59,19 @@ func (jwk *JWK) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]b
 	return nil, ErrNoPrivateKey
 }
 
+// Decrypt decrypts msg using the JWK's private key. Returns ErrNoPrivateKey
+// if no private key is available. This method satisfies the crypto.Decrypter
+// interface.
+func (jwk *JWK) Decrypt(rand io.Reader, msg []byte, opts crypto.DecrypterOpts) ([]byte, error) {
+	if jwk.PrivateKey == nil {
+		return nil, ErrNoPrivateKey
+	}
+	if dec, ok := jwk.PrivateKey.(crypto.Decrypter); ok {
+		return dec.Decrypt(rand, msg, opts)
+	}
+	return nil, ErrNoPrivateKey
+}
+
 // ThumbprintHex computes the JWK Thumbprint (RFC 7638) and returns it as a
 // hex-encoded string. Returns an empty string on error.
 func (jwk *JWK) ThumbprintHex(method crypto.Hash) string {

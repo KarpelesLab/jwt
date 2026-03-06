@@ -18,4 +18,8 @@ var (
 
 	ErrVerifyMissing = errors.New("jwt: a claim required for verification is missing")
 	ErrVerifyFailed  = errors.New("jwt: claim verification has failed")
+
+	ErrNotEncrypted    = errors.New("jwt: token is not encrypted")
+	ErrUnknownEnc      = errors.New("jwt: unrecognized enc value")
+	ErrDecryptionFailed = errors.New("jwt: decryption failed")
 )

@@ -1,0 +1,226 @@
+package jwt
+
+import (
+	"crypto"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
+)
+
+// KeyAlgo represents a JWE key management algorithm as defined in RFC 7518
+// Section 4. It handles wrapping and unwrapping of the Content Encryption Key.
+type KeyAlgo interface {
+	String() string
+
+	// GenerateCEK generates a Content Encryption Key and wraps it for the
+	// recipient. Returns the CEK and the encrypted key. For "dir", the
+	// encrypted key will be nil and the provided key is used directly as CEK.
+	GenerateCEK(rand io.Reader, keySize int, rcptKey any) (cek, encryptedKey []byte, err error)
+
+	// UnwrapKey recovers the CEK from the encrypted key using the recipient's
+	// private key or shared secret.
+	UnwrapKey(encryptedKey []byte, keySize int, privKey any) ([]byte, error)
+}
+
+// EncAlgo represents a JWE content encryption algorithm as defined in RFC 7518
+// Section 5. It provides authenticated encryption of the plaintext.
+type EncAlgo interface {
+	String() string
+
+	// KeySize returns the required key size in bytes.
+	KeySize() int
+
+	// Encrypt performs authenticated encryption. Returns the IV, ciphertext,
+	// and authentication tag. The aad parameter is the Additional
+	// Authenticated Data (the base64url-encoded protected header).
+	Encrypt(rand io.Reader, key, plaintext, aad []byte) (iv, ciphertext, tag []byte, err error)
+
+	// Decrypt performs authenticated decryption, verifying the tag.
+	Decrypt(key, iv, ciphertext, tag, aad []byte) ([]byte, error)
+}
+
+var (
+	// Key management algorithms (RFC 7518 Section 4)
+	RSA_OAEP     KeyAlgo = rsaOaepKeyAlgo{hash: crypto.SHA1, name: "RSA-OAEP"}.reg()
+	RSA_OAEP_256 KeyAlgo = rsaOaepKeyAlgo{hash: crypto.SHA256, name: "RSA-OAEP-256"}.reg()
+	Dir          KeyAlgo = dirKeyAlgo{}.reg()
+	A128KW       KeyAlgo = aesKwAlgo{keySize: 16}.reg()
+	A192KW       KeyAlgo = aesKwAlgo{keySize: 24}.reg()
+	A256KW       KeyAlgo = aesKwAlgo{keySize: 32}.reg()
+
+	// Content encryption algorithms (RFC 7518 Section 5)
+	A128GCM       EncAlgo = aesGcmEncAlgo{keySize: 16}.reg()
+	A192GCM       EncAlgo = aesGcmEncAlgo{keySize: 24}.reg()
+	A256GCM       EncAlgo = aesGcmEncAlgo{keySize: 32}.reg()
+	A128CBC_HS256 EncAlgo = aesCbcHsEncAlgo{keySize: 32, hash: crypto.SHA256}.reg()
+	A192CBC_HS384 EncAlgo = aesCbcHsEncAlgo{keySize: 48, hash: crypto.SHA384}.reg()
+	A256CBC_HS512 EncAlgo = aesCbcHsEncAlgo{keySize: 64, hash: crypto.SHA512}.reg()
+
+	keyAlgoMap = make(map[string]KeyAlgo)
+	encAlgoMap = make(map[string]EncAlgo)
+)
+
+// RegisterKeyAlgo registers a JWE key management algorithm. This is typically
+// called during init and no locking is performed.
+func RegisterKeyAlgo(obj KeyAlgo) {
+	keyAlgoMap[obj.String()] = obj
+}
+
+// RegisterEncAlgo registers a JWE content encryption algorithm. This is
+// typically called during init and no locking is performed.
+func RegisterEncAlgo(obj EncAlgo) {
+	encAlgoMap[obj.String()] = obj
+}
+
+func parseKeyAlgo(v string) KeyAlgo {
+	if a, ok := keyAlgoMap[v]; ok {
+		return a
+	}
+	return nil
+}
+
+func parseEncAlgo(v string) EncAlgo {
+	if a, ok := encAlgoMap[v]; ok {
+		return a
+	}
+	return nil
+}
+
+// IsEncrypted returns true if the token is a JWE (encrypted) token,
+// identified by having 5 dot-separated parts.
+func (tok *Token) IsEncrypted() bool {
+	return len(tok.values) == 5
+}
+
+// Encrypt encrypts the token's payload and returns the JWE compact
+// serialization string. The rcptKey is the recipient's public key (for
+// RSA-OAEP) or shared secret (for dir, AES-KW).
+func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg EncAlgo) (string, error) {
+	// Build the protected header
+	header := make(Header)
+	header["alg"] = keyAlg.String()
+	header["enc"] = encAlg.String()
+	for k, v := range tok.header {
+		if k != "alg" && k != "enc" {
+			header[k] = v
+		}
+	}
+
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", fmt.Errorf("jwt: failed to encode JWE header: %w", err)
+	}
+	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
+
+	// Get the plaintext
+	var plaintext []byte
+	if tok.payload != nil {
+		plaintext, err = json.Marshal(tok.payload)
+		if err != nil {
+			return "", fmt.Errorf("jwt: failed to encode payload: %w", err)
+		}
+	} else if len(tok.values) >= 2 {
+		plaintext, err = base64.RawURLEncoding.DecodeString(tok.values[1])
+		if err != nil {
+			return "", fmt.Errorf("jwt: failed to decode raw payload: %w", err)
+		}
+	} else {
+		plaintext = []byte("{}")
+	}
+
+	// Generate and wrap the CEK
+	cek, encryptedKey, err := keyAlg.GenerateCEK(rand, encAlg.KeySize(), rcptKey)
+	if err != nil {
+		return "", fmt.Errorf("jwt: failed to wrap key: %w", err)
+	}
+
+	// Encrypt the plaintext
+	iv, ciphertext, tag, err := encAlg.Encrypt(rand, cek, plaintext, []byte(headerB64))
+	if err != nil {
+		return "", fmt.Errorf("jwt: failed to encrypt: %w", err)
+	}
+
+	// Build compact serialization
+	values := []string{
+		headerB64,
+		base64.RawURLEncoding.EncodeToString(encryptedKey),
+		base64.RawURLEncoding.EncodeToString(iv),
+		base64.RawURLEncoding.EncodeToString(ciphertext),
+		base64.RawURLEncoding.EncodeToString(tag),
+	}
+
+	result := strings.Join(values, ".")
+	tok.value = result
+	tok.values = values
+	tok.header = header
+
+	return result, nil
+}
+
+// Decrypt decrypts a JWE token, making the payload accessible via Payload()
+// and GetRawPayload(). The privKey is the recipient's private key (for
+// RSA-OAEP) or shared secret (for dir, AES-KW).
+func (tok *Token) Decrypt(privKey any) error {
+	if !tok.IsEncrypted() {
+		return ErrNotEncrypted
+	}
+
+	header := tok.Header()
+	if header == nil {
+		return ErrNoHeader
+	}
+
+	algName := header.Get("alg")
+	keyAlg := parseKeyAlgo(algName)
+	if keyAlg == nil {
+		return fmt.Errorf("%w: %s", ErrUnknownAlg, algName)
+	}
+
+	encName := header.Get("enc")
+	encAlg := parseEncAlgo(encName)
+	if encAlg == nil {
+		return fmt.Errorf("%w: %s", ErrUnknownEnc, encName)
+	}
+
+	// Decode the JWE parts
+	encryptedKey, err := base64.RawURLEncoding.DecodeString(tok.values[1])
+	if err != nil {
+		return fmt.Errorf("jwt: failed to decode encrypted key: %w", err)
+	}
+	iv, err := base64.RawURLEncoding.DecodeString(tok.values[2])
+	if err != nil {
+		return fmt.Errorf("jwt: failed to decode IV: %w", err)
+	}
+	ciphertext, err := base64.RawURLEncoding.DecodeString(tok.values[3])
+	if err != nil {
+		return fmt.Errorf("jwt: failed to decode ciphertext: %w", err)
+	}
+	tag, err := base64.RawURLEncoding.DecodeString(tok.values[4])
+	if err != nil {
+		return fmt.Errorf("jwt: failed to decode authentication tag: %w", err)
+	}
+
+	// Unwrap the CEK
+	cek, err := keyAlg.UnwrapKey(encryptedKey, encAlg.KeySize(), privKey)
+	if err != nil {
+		return fmt.Errorf("jwt: failed to unwrap key: %w", err)
+	}
+
+	// Decrypt
+	aad := []byte(tok.values[0])
+	plaintext, err := encAlg.Decrypt(cek, iv, ciphertext, tag, aad)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrDecryptionFailed, err)
+	}
+
+	// Store the decrypted payload so Payload() and GetRawPayload() work
+	tok.values = []string{
+		tok.values[0],
+		base64.RawURLEncoding.EncodeToString(plaintext),
+	}
+	tok.payload = nil
+
+	return nil
+}

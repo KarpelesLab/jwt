@@ -43,7 +43,7 @@ func New(algopt ...Algo) *Token {
 // verification is performed at this point, so it is up to you to call the
 // Verify method.
 func ParseString(value string) (*Token, error) {
-	split := strings.SplitN(value, ".", 3)
+	split := strings.Split(value, ".")
 
 	if len(split) < 2 {
 		return nil, ErrInvalidToken
