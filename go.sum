@@ -1,2 +1,6 @@
+github.com/KarpelesLab/mldsa v0.1.1 h1:ql1YN/5R2cQ74Bi05EUiMrOkcl++GrRVNBX4SCJALuU=
+github.com/KarpelesLab/mldsa v0.1.1/go.mod h1:x1T4Gyd86wpLwnk1LafWJCqD3EwvhZKXK+0QfHgqZBk=
+github.com/KarpelesLab/slhdsa v0.1.0 h1:5qAT+oWF5ENEXQA6qrgpHNwwt1GXPwjKSjplFSqcEp0=
+github.com/KarpelesLab/slhdsa v0.1.0/go.mod h1:VpvPoyXGXABOX0ahkrS260BZrVZWIt5pD9g5waVWsWw=
 golang.org/x/crypto v0.19.0 h1:ENy+Az/9Y1vSrlrvBSyna3PITt4tiZLf7sgCjZBX7Wo=
 golang.org/x/crypto v0.19.0/go.mod h1:Iy9bg/ha4yyC70EfRS8jz+B6ybOBKMaSxLj6P6oBDfU=

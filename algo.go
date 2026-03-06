@@ -7,6 +7,9 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
+
+	"github.com/KarpelesLab/mldsa"
+	"github.com/KarpelesLab/slhdsa"
 )
 
 // Algo is a jwt signature algorithm. Typical values include HS256 and ES256.
@@ -98,6 +101,18 @@ func GetAlgoForSigner(s crypto.PrivateKey) (Algo, error) {
 			return EdDSA, nil
 		case *rsa.PublicKey:
 			return RS256, nil // for RSA hash size does not depend on key size, default to 256 bits
+		case *mldsa.PublicKey44:
+			return MLDSA44, nil
+		case *mldsa.PublicKey65:
+			return MLDSA65, nil
+		case *mldsa.PublicKey87:
+			return MLDSA87, nil
+		case *slhdsa.PublicKey:
+			algo := parseAlgo(pubkey.Params().String())
+			if algo == nil {
+				return nil, fmt.Errorf("unsupported SLH-DSA variant: %s", pubkey.Params().String())
+			}
+			return algo, nil
 		default:
 			return nil, fmt.Errorf("unsupported public key type %T", pubkey)
 		}
