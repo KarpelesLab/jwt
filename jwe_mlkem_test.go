@@ -17,7 +17,8 @@ func TestMLKEM768_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("msg", "quantum-safe")
 
-	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), jwt.MLKEM768, jwt.A256GCM)
+	// nil opts → auto-detects ML-KEM-768 + A256GCM
+	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -49,7 +50,7 @@ func TestMLKEM768_A128CBC_HS256(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("enc", "cbc")
 
-	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), jwt.MLKEM768, jwt.A128CBC_HS256)
+	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), &jwt.EncryptOptions{EncAlgo: jwt.A128CBC_HS256})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -72,7 +73,7 @@ func TestMLKEM1024_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("level", "1024")
 
-	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), jwt.MLKEM1024, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -96,7 +97,7 @@ func TestMLKEM768_EncapsulateFromDecapKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	encrypted, err := tok.Encrypt(rand.Reader, dk, jwt.MLKEM768, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, dk, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt with decap key: %s", err)
 	}
@@ -117,7 +118,7 @@ func TestMLKEM768_WrongKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("secret", "data")
 
-	encrypted, _ := tok.Encrypt(rand.Reader, dk1.EncapsulationKey(), jwt.MLKEM768, jwt.A256GCM)
+	encrypted, _ := tok.Encrypt(rand.Reader, dk1.EncapsulationKey(), nil)
 
 	tok2, _ := jwt.ParseString(encrypted)
 	err := tok2.Decrypt(dk2)
@@ -130,12 +131,12 @@ func TestMLKEM_InvalidKeyType(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	_, err := tok.Encrypt(rand.Reader, []byte("wrong"), jwt.MLKEM768, jwt.A256GCM)
+	_, err := tok.Encrypt(rand.Reader, []byte("wrong"), &jwt.EncryptOptions{KeyAlgo: jwt.MLKEM768})
 	if err == nil {
 		t.Error("should fail with wrong key type")
 	}
 
-	_, err = tok.Encrypt(rand.Reader, []byte("wrong"), jwt.MLKEM1024, jwt.A256GCM)
+	_, err = tok.Encrypt(rand.Reader, []byte("wrong"), &jwt.EncryptOptions{KeyAlgo: jwt.MLKEM1024})
 	if err == nil {
 		t.Error("should fail with wrong key type for 1024")
 	}
@@ -151,7 +152,7 @@ func TestMLKEM768_A256CBC_HS512(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("big", "key")
 
-	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), jwt.MLKEM768, jwt.A256CBC_HS512)
+	encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), &jwt.EncryptOptions{EncAlgo: jwt.A256CBC_HS512})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -172,7 +173,7 @@ func TestMLKEM1024_DecryptWrongLevel(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	encrypted, _ := tok.Encrypt(rand.Reader, dk1024.EncapsulationKey(), jwt.MLKEM1024, jwt.A256GCM)
+	encrypted, _ := tok.Encrypt(rand.Reader, dk1024.EncapsulationKey(), nil)
 
 	// Try to decrypt ML-KEM-1024 token with 768 key — wrong type
 	tok2, _ := jwt.ParseString(encrypted)

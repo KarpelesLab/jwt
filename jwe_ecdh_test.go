@@ -21,7 +21,7 @@ func TestECDHES_P256_A128GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("sub", "ecdh-user")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A128GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), &jwt.EncryptOptions{EncAlgo: jwt.A128GCM})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -55,6 +55,37 @@ func TestECDHES_P256_A128GCM(t *testing.T) {
 	}
 }
 
+func TestECDHES_P256_AutoDetect(t *testing.T) {
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate key: %s", err)
+	}
+
+	tok := jwt.New()
+	tok.Payload().Set("auto", "detect")
+
+	// nil opts → auto-detects ECDH-ES + A256GCM
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
+	if err != nil {
+		t.Fatalf("failed to encrypt: %s", err)
+	}
+
+	tok2, _ := jwt.ParseString(encrypted)
+	if tok2.Header().Get("alg") != "ECDH-ES" {
+		t.Errorf("expected ECDH-ES, got %s", tok2.Header().Get("alg"))
+	}
+	if tok2.Header().Get("enc") != "A256GCM" {
+		t.Errorf("expected A256GCM, got %s", tok2.Header().Get("enc"))
+	}
+
+	if err := tok2.Decrypt(key); err != nil {
+		t.Fatalf("failed to decrypt: %s", err)
+	}
+	if tok2.Payload().GetString("auto") != "detect" {
+		t.Error("payload mismatch")
+	}
+}
+
 func TestECDHES_P384_A256GCM(t *testing.T) {
 	key, err := ecdh.P384().GenerateKey(rand.Reader)
 	if err != nil {
@@ -64,7 +95,7 @@ func TestECDHES_P384_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("curve", "P-384")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -87,7 +118,7 @@ func TestECDHES_P521_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("curve", "P-521")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -110,7 +141,7 @@ func TestECDHES_X25519_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("curve", "X25519")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -133,7 +164,7 @@ func TestECDHES_A128KW_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("mode", "keywrap")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES_A128KW, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), &jwt.EncryptOptions{KeyAlgo: jwt.ECDH_ES_A128KW})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -162,7 +193,7 @@ func TestECDHES_A256KW_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("wrap", "256")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES_A256KW, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), &jwt.EncryptOptions{KeyAlgo: jwt.ECDH_ES_A256KW})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -185,7 +216,7 @@ func TestECDHES_A192KW_A192CBC_HS384(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("enc", "cbc")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES_A192KW, jwt.A192CBC_HS384)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), &jwt.EncryptOptions{KeyAlgo: jwt.ECDH_ES_A192KW, EncAlgo: jwt.A192CBC_HS384})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -209,8 +240,8 @@ func TestECDHES_WithECDSAKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("key", "ecdsa")
 
-	// Encrypt with ECDSA public key
-	encrypted, err := tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, jwt.ECDH_ES, jwt.A256GCM)
+	// Auto-detects ECDH-ES from ECDSA key type
+	encrypted, err := tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt with ECDSA key: %s", err)
 	}
@@ -236,7 +267,7 @@ func TestECDHES_WithApuApv(t *testing.T) {
 	tok.Header().Set("apu", base64.RawURLEncoding.EncodeToString([]byte("Alice")))
 	tok.Header().Set("apv", base64.RawURLEncoding.EncodeToString([]byte("Bob")))
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -257,7 +288,7 @@ func TestECDHES_WrongKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("secret", "data")
 
-	encrypted, _ := tok.Encrypt(rand.Reader, key1.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, _ := tok.Encrypt(rand.Reader, key1.PublicKey(), nil)
 
 	tok2, _ := jwt.ParseString(encrypted)
 	err := tok2.Decrypt(key2)
@@ -270,7 +301,7 @@ func TestECDHES_InvalidKeyType(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	_, err := tok.Encrypt(rand.Reader, []byte("not-a-key"), jwt.ECDH_ES, jwt.A256GCM)
+	_, err := tok.Encrypt(rand.Reader, []byte("not-a-key"), &jwt.EncryptOptions{KeyAlgo: jwt.ECDH_ES})
 	if err == nil {
 		t.Error("should fail with invalid key type")
 	}
@@ -283,7 +314,7 @@ func TestECDHES_HeaderPreserved(t *testing.T) {
 	tok.Header().Set("kid", "ec-key-1")
 	tok.Payload().Set("x", "y")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -312,7 +343,7 @@ func TestECDHES_EncryptFromPrivateKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("from", "privkey")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.ECDH_ES, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt from private key: %s", err)
 	}

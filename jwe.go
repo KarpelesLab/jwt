@@ -2,6 +2,10 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/mlkem"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -60,6 +64,19 @@ type EncAlgo interface {
 	Decrypt(key, iv, ciphertext, tag, aad []byte) ([]byte, error)
 }
 
+// EncryptOptions configures the JWE encryption. All fields are optional;
+// nil values are auto-detected from the recipient key type.
+type EncryptOptions struct {
+	// KeyAlgo specifies the key management algorithm. If nil, it is
+	// auto-detected from the recipient key type (e.g. *rsa.PublicKey →
+	// RSA-OAEP-256, *ecdh.PublicKey → ECDH-ES, []byte → dir).
+	KeyAlgo KeyAlgo
+
+	// EncAlgo specifies the content encryption algorithm. If nil, defaults
+	// to A256GCM.
+	EncAlgo EncAlgo
+}
+
 var (
 	// Key management algorithms (RFC 7518 Section 4)
 	RSA_OAEP     KeyAlgo = rsaOaepKeyAlgo{hash: crypto.SHA1, name: "RSA-OAEP"}.reg()
@@ -107,6 +124,32 @@ func parseEncAlgo(v string) EncAlgo {
 	return nil
 }
 
+// GetKeyAlgoForKey returns the default JWE key management algorithm for
+// the given key. This is used by Encrypt when no KeyAlgo is specified.
+func GetKeyAlgoForKey(key any) (KeyAlgo, error) {
+	switch key.(type) {
+	case *rsa.PublicKey, *rsa.PrivateKey:
+		return RSA_OAEP_256, nil
+	case *ecdsa.PublicKey, *ecdsa.PrivateKey:
+		return ECDH_ES, nil
+	case *ecdh.PublicKey, *ecdh.PrivateKey:
+		return ECDH_ES, nil
+	case *mlkem.EncapsulationKey768, *mlkem.DecapsulationKey768:
+		return MLKEM768, nil
+	case *mlkem.EncapsulationKey1024, *mlkem.DecapsulationKey1024:
+		return MLKEM1024, nil
+	case []byte:
+		return Dir, nil
+	}
+	// Try key containers (JWK, etc.)
+	if obj, ok := key.(interface{ Public() crypto.PublicKey }); ok {
+		if pub := obj.Public(); pub != nil {
+			return GetKeyAlgoForKey(pub)
+		}
+	}
+	return nil, fmt.Errorf("jwt: cannot determine encryption algorithm for key type %T", key)
+}
+
 // IsEncrypted returns true if the token is a JWE (encrypted) token,
 // identified by having 5 dot-separated parts.
 func (tok *Token) IsEncrypted() bool {
@@ -115,8 +158,35 @@ func (tok *Token) IsEncrypted() bool {
 
 // Encrypt encrypts the token's payload and returns the JWE compact
 // serialization string. The rcptKey is the recipient's public key (for
-// RSA-OAEP, ECDH-ES) or shared secret (for dir, AES-KW).
-func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg EncAlgo) (string, error) {
+// RSA-OAEP, ECDH-ES), shared secret (for dir, AES-KW), or encapsulation
+// key (for ML-KEM).
+//
+// If opts is nil, the key management algorithm is auto-detected from the
+// key type and A256GCM is used for content encryption. Individual fields
+// in opts may also be left nil for auto-detection.
+func (tok *Token) Encrypt(rand io.Reader, rcptKey any, opts *EncryptOptions) (string, error) {
+	var keyAlg KeyAlgo
+	var encAlg EncAlgo
+
+	if opts != nil {
+		keyAlg = opts.KeyAlgo
+		encAlg = opts.EncAlgo
+	}
+
+	// Auto-detect key algorithm from key type
+	if keyAlg == nil {
+		var err error
+		keyAlg, err = GetKeyAlgoForKey(rcptKey)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Default content encryption algorithm
+	if encAlg == nil {
+		encAlg = A256GCM
+	}
+
 	// Build the protected header
 	header := make(Header)
 	header["alg"] = keyAlg.String()

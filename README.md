@@ -123,7 +123,7 @@ signed, err := tok.Sign(rand.Reader, ecdsaPrivateKey)
 ```go
 tok := jwt.New()
 tok.Payload().Set("sub", "user123")
-encrypted, err := tok.Encrypt(rand.Reader, recipientPublicKey, jwt.RSA_OAEP_256, jwt.A256GCM)
+encrypted, err := tok.Encrypt(rand.Reader, recipientPublicKey, nil) // auto-detects RSA-OAEP-256 + A256GCM
 ```
 
 ### Decrypt a token (JWE)
@@ -143,12 +143,12 @@ log.Printf("sub = %s", tok.Payload().GetString("sub"))
 ### Encrypt with ECDH-ES
 
 ```go
-// Using crypto/ecdh keys
+// Using crypto/ecdh keys — algorithm auto-detected as ECDH-ES
 key, _ := ecdh.P256().GenerateKey(rand.Reader)
 
 tok := jwt.New()
 tok.Payload().Set("sub", "user123")
-encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), nil)
 
 // Decrypt
 tok2, _ := jwt.ParseString(encrypted)
@@ -156,7 +156,10 @@ err = tok2.Decrypt(key)
 
 // ECDSA keys are also supported — they are converted automatically
 ecdsaKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-encrypted, err = tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, jwt.ECDH_ES_A256KW, jwt.A256GCM)
+encrypted, err = tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, nil)
+
+// Use ECDH-ES+A256KW key wrapping with explicit options
+encrypted, err = tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, &jwt.EncryptOptions{KeyAlgo: jwt.ECDH_ES_A256KW})
 ```
 
 ### Encrypt with a symmetric key
@@ -167,7 +170,7 @@ rand.Read(key)
 
 tok := jwt.New()
 tok.Payload().Set("msg", "secret")
-encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A256GCM)
+encrypted, err := tok.Encrypt(rand.Reader, key, nil) // auto-detects dir + A256GCM
 
 // Decrypt
 tok2, _ := jwt.ParseString(encrypted)
@@ -195,7 +198,7 @@ dk, _ := mlkem.GenerateKey768()
 
 tok := jwt.New()
 tok.Payload().Set("msg", "quantum-safe")
-encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), jwt.MLKEM768, jwt.A256GCM)
+encrypted, err := tok.Encrypt(rand.Reader, dk.EncapsulationKey(), nil) // auto-detects ML-KEM-768 + A256GCM
 
 // Decrypt
 tok2, _ := jwt.ParseString(encrypted)

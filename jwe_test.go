@@ -22,7 +22,8 @@ func TestJWE_RSAOAEP256_A256GCM(t *testing.T) {
 	tok.Payload().Set("sub", "user123")
 	tok.Payload().Set("iss", "test")
 
-	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, jwt.RSA_OAEP_256, jwt.A256GCM)
+	// nil opts → auto-detects RSA-OAEP-256 + A256GCM
+	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -55,6 +56,11 @@ func TestJWE_RSAOAEP256_A256GCM(t *testing.T) {
 	if tok2.Payload().GetString("iss") != "test" {
 		t.Errorf("expected iss=test, got %s", tok2.Payload().GetString("iss"))
 	}
+
+	// Verify auto-detected algo
+	if tok2.Header().Get("alg") != "RSA-OAEP-256" {
+		t.Errorf("expected alg=RSA-OAEP-256, got %s", tok2.Header().Get("alg"))
+	}
 }
 
 func TestJWE_RSAOAEP_A128GCM(t *testing.T) {
@@ -66,7 +72,7 @@ func TestJWE_RSAOAEP_A128GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("data", "hello")
 
-	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, jwt.RSA_OAEP, jwt.A128GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, &jwt.EncryptOptions{KeyAlgo: jwt.RSA_OAEP, EncAlgo: jwt.A128GCM})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -93,7 +99,8 @@ func TestJWE_Dir_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("msg", "secret")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A256GCM)
+	// nil opts → auto-detects dir + A256GCM
+	encrypted, err := tok.Encrypt(rand.Reader, key, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -126,7 +133,7 @@ func TestJWE_Dir_A128GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A128GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key, &jwt.EncryptOptions{EncAlgo: jwt.A128GCM})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -150,7 +157,7 @@ func TestJWE_A128KW_A128GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("wrapped", true)
 
-	encrypted, err := tok.Encrypt(rand.Reader, kek, jwt.A128KW, jwt.A128GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, kek, &jwt.EncryptOptions{KeyAlgo: jwt.A128KW, EncAlgo: jwt.A128GCM})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -174,7 +181,7 @@ func TestJWE_A256KW_A256GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("val", "test")
 
-	encrypted, err := tok.Encrypt(rand.Reader, kek, jwt.A256KW, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, kek, &jwt.EncryptOptions{KeyAlgo: jwt.A256KW})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -200,7 +207,7 @@ func TestJWE_RSAOAEP256_A128CBC_HS256(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("sub", "cbc-test")
 
-	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, jwt.RSA_OAEP_256, jwt.A128CBC_HS256)
+	encrypted, err := tok.Encrypt(rand.Reader, &key.PublicKey, &jwt.EncryptOptions{EncAlgo: jwt.A128CBC_HS256})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -224,7 +231,7 @@ func TestJWE_Dir_A256CBC_HS512(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("data", "cbc512")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A256CBC_HS512)
+	encrypted, err := tok.Encrypt(rand.Reader, key, &jwt.EncryptOptions{EncAlgo: jwt.A256CBC_HS512})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -248,7 +255,7 @@ func TestJWE_A192KW_A192CBC_HS384(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("n", "192")
 
-	encrypted, err := tok.Encrypt(rand.Reader, kek, jwt.A192KW, jwt.A192CBC_HS384)
+	encrypted, err := tok.Encrypt(rand.Reader, kek, &jwt.EncryptOptions{KeyAlgo: jwt.A192KW, EncAlgo: jwt.A192CBC_HS384})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -272,7 +279,7 @@ func TestJWE_DecryptWrongKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("secret", "data")
 
-	encrypted, err := tok.Encrypt(rand.Reader, &key1.PublicKey, jwt.RSA_OAEP_256, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, &key1.PublicKey, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -293,7 +300,7 @@ func TestJWE_DecryptWrongSymmetricKey(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("x", "y")
 
-	encrypted, _ := tok.Encrypt(rand.Reader, key1, jwt.Dir, jwt.A256GCM)
+	encrypted, _ := tok.Encrypt(rand.Reader, key1, nil)
 
 	tok2, _ := jwt.ParseString(encrypted)
 	err := tok2.Decrypt(key2)
@@ -320,7 +327,7 @@ func TestJWE_HeaderPreserved(t *testing.T) {
 	tok.Header().Set("kid", "mykey")
 	tok.Payload().Set("x", "y")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -344,7 +351,7 @@ func TestJWE_RawPayload(t *testing.T) {
 	tok := jwt.New()
 	tok.SetRawPayload([]byte("raw binary data"), "octet-stream")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A256GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -373,8 +380,8 @@ func TestJWE_RSAWithJWK(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("via", "jwk")
 
-	// Encrypt with JWK (uses Public() to get the RSA public key)
-	encrypted, err := tok.Encrypt(rand.Reader, jwk, jwt.RSA_OAEP_256, jwt.A256GCM)
+	// Auto-detects RSA-OAEP-256 via JWK's Public() method
+	encrypted, err := tok.Encrypt(rand.Reader, jwk, nil)
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -395,31 +402,31 @@ func TestJWE_InvalidKeyType(t *testing.T) {
 	tok.Payload().Set("x", "y")
 
 	// Wrong key type for RSA-OAEP
-	_, err := tok.Encrypt(rand.Reader, []byte("not-rsa"), jwt.RSA_OAEP_256, jwt.A256GCM)
+	_, err := tok.Encrypt(rand.Reader, []byte("not-rsa"), &jwt.EncryptOptions{KeyAlgo: jwt.RSA_OAEP_256})
 	if err == nil {
 		t.Error("should fail with wrong key type")
 	}
 
 	// Wrong key type for dir
-	_, err = tok.Encrypt(rand.Reader, "not-bytes", jwt.Dir, jwt.A256GCM)
+	_, err = tok.Encrypt(rand.Reader, "not-bytes", &jwt.EncryptOptions{KeyAlgo: jwt.Dir})
 	if err == nil {
 		t.Error("should fail with wrong key type for dir")
 	}
 
 	// Wrong key size for dir
-	_, err = tok.Encrypt(rand.Reader, []byte("short"), jwt.Dir, jwt.A256GCM)
+	_, err = tok.Encrypt(rand.Reader, []byte("short"), nil)
 	if err == nil {
 		t.Error("should fail with wrong key size for dir")
 	}
 
 	// Wrong key type for AES-KW
-	_, err = tok.Encrypt(rand.Reader, "not-bytes", jwt.A128KW, jwt.A128GCM)
+	_, err = tok.Encrypt(rand.Reader, "not-bytes", &jwt.EncryptOptions{KeyAlgo: jwt.A128KW, EncAlgo: jwt.A128GCM})
 	if err == nil {
 		t.Error("should fail with wrong key type for AES-KW")
 	}
 
 	// Wrong key size for AES-KW
-	_, err = tok.Encrypt(rand.Reader, []byte("short"), jwt.A128KW, jwt.A128GCM)
+	_, err = tok.Encrypt(rand.Reader, []byte("short"), &jwt.EncryptOptions{KeyAlgo: jwt.A128KW, EncAlgo: jwt.A128GCM})
 	if err == nil {
 		t.Error("should fail with wrong key size for AES-KW")
 	}
@@ -432,7 +439,7 @@ func TestJWE_A192GCM(t *testing.T) {
 	tok := jwt.New()
 	tok.Payload().Set("v", "192gcm")
 
-	encrypted, err := tok.Encrypt(rand.Reader, key, jwt.Dir, jwt.A192GCM)
+	encrypted, err := tok.Encrypt(rand.Reader, key, &jwt.EncryptOptions{EncAlgo: jwt.A192GCM})
 	if err != nil {
 		t.Fatalf("failed to encrypt: %s", err)
 	}
@@ -443,5 +450,32 @@ func TestJWE_A192GCM(t *testing.T) {
 	}
 	if tok2.Payload().GetString("v") != "192gcm" {
 		t.Error("payload mismatch")
+	}
+}
+
+func TestJWE_AutoDetect(t *testing.T) {
+	// RSA key → RSA-OAEP-256
+	rsaKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	algo, err := jwt.GetKeyAlgoForKey(&rsaKey.PublicKey)
+	if err != nil {
+		t.Fatalf("failed to detect RSA algo: %s", err)
+	}
+	if algo.String() != "RSA-OAEP-256" {
+		t.Errorf("expected RSA-OAEP-256, got %s", algo.String())
+	}
+
+	// []byte → dir
+	algo, err = jwt.GetKeyAlgoForKey([]byte("key"))
+	if err != nil {
+		t.Fatalf("failed to detect dir algo: %s", err)
+	}
+	if algo.String() != "dir" {
+		t.Errorf("expected dir, got %s", algo.String())
+	}
+
+	// Unknown type → error
+	_, err = jwt.GetKeyAlgoForKey(42)
+	if err == nil {
+		t.Error("should fail for unknown key type")
 	}
 }
