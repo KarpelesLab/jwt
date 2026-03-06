@@ -29,12 +29,12 @@ func New(algopt ...Algo) *Token {
 
 	if alg == nil {
 		return &Token{
-			header:  make(map[string]string),
+			header:  make(Header),
 			payload: make(Payload),
 		}
 	}
 	return &Token{
-		header:  map[string]string{"alg": alg.String()},
+		header:  Header{"alg": alg.String()},
 		payload: make(Payload),
 	}
 }

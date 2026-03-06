@@ -24,6 +24,25 @@ type KeyAlgo interface {
 	UnwrapKey(encryptedKey []byte, keySize int, privKey any) ([]byte, error)
 }
 
+// HeaderKeyAlgo is an optional extension of KeyAlgo for algorithms that need
+// access to JWE header parameters during key management. ECDH-ES algorithms
+// use this to include the ephemeral public key (epk) in the protected header
+// and to read it back during decryption.
+type HeaderKeyAlgo interface {
+	KeyAlgo
+
+	// GenerateCEKWithHeader generates a CEK and may return additional header
+	// parameters to include in the JWE protected header (e.g. "epk").
+	// The header parameter contains user-set headers (e.g. "apu", "apv").
+	// The encAlg parameter is the "enc" algorithm name for key derivation.
+	GenerateCEKWithHeader(rand io.Reader, keySize int, rcptKey any, header Header, encAlg string) (cek, encryptedKey []byte, extraHeaders map[string]any, err error)
+
+	// UnwrapKeyFromHeader recovers the CEK using header information. The
+	// header parameter contains the full protected header including
+	// algorithm-specific parameters (e.g. "epk", "apu", "apv").
+	UnwrapKeyFromHeader(encryptedKey []byte, keySize int, privKey any, header Header, encAlg string) ([]byte, error)
+}
+
 // EncAlgo represents a JWE content encryption algorithm as defined in RFC 7518
 // Section 5. It provides authenticated encryption of the plaintext.
 type EncAlgo interface {
@@ -96,7 +115,7 @@ func (tok *Token) IsEncrypted() bool {
 
 // Encrypt encrypts the token's payload and returns the JWE compact
 // serialization string. The rcptKey is the recipient's public key (for
-// RSA-OAEP) or shared secret (for dir, AES-KW).
+// RSA-OAEP, ECDH-ES) or shared secret (for dir, AES-KW).
 func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg EncAlgo) (string, error) {
 	// Build the protected header
 	header := make(Header)
@@ -108,14 +127,9 @@ func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg En
 		}
 	}
 
-	headerJSON, err := json.Marshal(header)
-	if err != nil {
-		return "", fmt.Errorf("jwt: failed to encode JWE header: %w", err)
-	}
-	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
-
 	// Get the plaintext
 	var plaintext []byte
+	var err error
 	if tok.payload != nil {
 		plaintext, err = json.Marshal(tok.payload)
 		if err != nil {
@@ -131,10 +145,26 @@ func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg En
 	}
 
 	// Generate and wrap the CEK
-	cek, encryptedKey, err := keyAlg.GenerateCEK(rand, encAlg.KeySize(), rcptKey)
+	var cek, encryptedKey []byte
+	if hka, ok := keyAlg.(HeaderKeyAlgo); ok {
+		var extraHeaders map[string]any
+		cek, encryptedKey, extraHeaders, err = hka.GenerateCEKWithHeader(rand, encAlg.KeySize(), rcptKey, header, encAlg.String())
+		for k, v := range extraHeaders {
+			header[k] = v
+		}
+	} else {
+		cek, encryptedKey, err = keyAlg.GenerateCEK(rand, encAlg.KeySize(), rcptKey)
+	}
 	if err != nil {
 		return "", fmt.Errorf("jwt: failed to wrap key: %w", err)
 	}
+
+	// Serialize header to JSON (this is the AAD)
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", fmt.Errorf("jwt: failed to encode JWE header: %w", err)
+	}
+	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
 	// Encrypt the plaintext
 	iv, ciphertext, tag, err := encAlg.Encrypt(rand, cek, plaintext, []byte(headerB64))
@@ -161,7 +191,7 @@ func (tok *Token) Encrypt(rand io.Reader, rcptKey any, keyAlg KeyAlgo, encAlg En
 
 // Decrypt decrypts a JWE token, making the payload accessible via Payload()
 // and GetRawPayload(). The privKey is the recipient's private key (for
-// RSA-OAEP) or shared secret (for dir, AES-KW).
+// RSA-OAEP, ECDH-ES) or shared secret (for dir, AES-KW).
 func (tok *Token) Decrypt(privKey any) error {
 	if !tok.IsEncrypted() {
 		return ErrNotEncrypted
@@ -203,7 +233,12 @@ func (tok *Token) Decrypt(privKey any) error {
 	}
 
 	// Unwrap the CEK
-	cek, err := keyAlg.UnwrapKey(encryptedKey, encAlg.KeySize(), privKey)
+	var cek []byte
+	if hka, ok := keyAlg.(HeaderKeyAlgo); ok {
+		cek, err = hka.UnwrapKeyFromHeader(encryptedKey, encAlg.KeySize(), privKey, header, encName)
+	} else {
+		cek, err = keyAlg.UnwrapKey(encryptedKey, encAlg.KeySize(), privKey)
+	}
 	if err != nil {
 		return fmt.Errorf("jwt: failed to unwrap key: %w", err)
 	}

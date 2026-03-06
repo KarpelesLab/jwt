@@ -13,7 +13,7 @@ Supports JWS ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)) for sig
 
 - **Simple API** -- create, sign, verify and encrypt tokens in a few lines
 - **JWS signing** -- HMAC, RSA, RSA-PSS, ECDSA, Ed25519, ML-DSA, SLH-DSA
-- **JWE encryption** -- RSA-OAEP, AES Key Wrap, direct keys, ML-KEM
+- **JWE encryption** -- RSA-OAEP, ECDH-ES, AES Key Wrap, direct keys, ML-KEM
 - **Post-quantum ready** -- ML-DSA (FIPS 204), SLH-DSA (FIPS 205), ML-KEM (FIPS 203)
 - **Custom algorithms** -- implement `Algo`, `KeyAlgo` or `EncAlgo` and register
 - **JWK support** -- parse, export and use JSON Web Keys (RFC 7517)
@@ -52,6 +52,8 @@ The part in the middle is the interesting bit. It's called the Claims and contai
 | RSA-OAEP | RSA-OAEP with SHA-1 |
 | RSA-OAEP-256 | RSA-OAEP with SHA-256 |
 | A128KW, A192KW, A256KW | AES Key Wrap (RFC 3394) |
+| ECDH-ES | ECDH Ephemeral Static key agreement (RFC 7518) |
+| ECDH-ES+A128KW, ECDH-ES+A192KW, ECDH-ES+A256KW | ECDH-ES with AES Key Wrap |
 | dir | Direct use of a shared symmetric key |
 | ML-KEM-768, ML-KEM-1024 | Post-quantum key encapsulation (FIPS 203) |
 
@@ -136,6 +138,25 @@ if err != nil {
 	// handle error
 }
 log.Printf("sub = %s", tok.Payload().GetString("sub"))
+```
+
+### Encrypt with ECDH-ES
+
+```go
+// Using crypto/ecdh keys
+key, _ := ecdh.P256().GenerateKey(rand.Reader)
+
+tok := jwt.New()
+tok.Payload().Set("sub", "user123")
+encrypted, err := tok.Encrypt(rand.Reader, key.PublicKey(), jwt.ECDH_ES, jwt.A256GCM)
+
+// Decrypt
+tok2, _ := jwt.ParseString(encrypted)
+err = tok2.Decrypt(key)
+
+// ECDSA keys are also supported — they are converted automatically
+ecdsaKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+encrypted, err = tok.Encrypt(rand.Reader, &ecdsaKey.PublicKey, jwt.ECDH_ES_A256KW, jwt.A256GCM)
 ```
 
 ### Encrypt with a symmetric key

@@ -2,19 +2,26 @@ package jwt
 
 import "fmt"
 
-// Header type holds values from the token's header for easy access
-type Header map[string]string
+// Header type holds values from the token's header for easy access.
+// Values are typically strings, but may be other types (e.g. the "epk"
+// parameter in ECDH-ES is a JSON object).
+type Header map[string]any
 
 // Get will return the value of the requested key from the header, or an empty
-// string if the value is not found.
+// string if the value is not found or is not a string.
 func (h Header) Get(key string) string {
 	if h == nil {
 		return ""
 	}
-	if v, ok := h[key]; ok {
-		return v
+	v, ok := h[key]
+	if !ok {
+		return ""
 	}
-	return ""
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }
 
 // Set will update the key's value in the header and return nil. If there is
