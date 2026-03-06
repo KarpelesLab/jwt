@@ -14,6 +14,9 @@ import (
 	"math/big"
 )
 
+// JWK represents a JSON Web Key as defined in RFC 7517. It can hold either
+// a public key, a private key, or both. JWK implements crypto.Signer when
+// a private key is present, making it usable directly with Sign methods.
 type JWK struct {
 	PrivateKey crypto.PrivateKey `json:"-"`
 	PublicKey  crypto.PublicKey  `json:"-"`
@@ -24,6 +27,7 @@ type JWK struct {
 	KeyOps     []string          `json:"key_ops,omitempty"`
 }
 
+// String returns a human-readable representation of the JWK showing the key type.
 func (jwk *JWK) String() string {
 	if jwk.PrivateKey != nil {
 		return fmt.Sprintf("JWK[%T]", jwk.PrivateKey)
@@ -31,6 +35,9 @@ func (jwk *JWK) String() string {
 	return fmt.Sprintf("JWK[%T]", jwk.PublicKey)
 }
 
+// Public returns the public key associated with this JWK. If a private key
+// is present, the public key is derived from it. This method satisfies the
+// crypto.Signer interface.
 func (jwk *JWK) Public() crypto.PublicKey {
 	if jwk.PrivateKey != nil {
 		if v, ok := jwk.PrivateKey.(interface{ Public() crypto.PublicKey }); ok {
@@ -40,6 +47,8 @@ func (jwk *JWK) Public() crypto.PublicKey {
 	return jwk.PublicKey
 }
 
+// Sign signs the digest using the JWK's private key. Returns ErrNoPrivateKey
+// if no private key is available. This method satisfies the crypto.Signer interface.
 func (jwk *JWK) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	if jwk.PrivateKey == nil {
 		return nil, ErrNoPrivateKey
@@ -50,6 +59,8 @@ func (jwk *JWK) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]b
 	return nil, ErrNoPrivateKey
 }
 
+// ThumbprintHex computes the JWK Thumbprint (RFC 7638) and returns it as a
+// hex-encoded string. Returns an empty string on error.
 func (jwk *JWK) ThumbprintHex(method crypto.Hash) string {
 	v, err := jwk.Thumbprint(method)
 	if err != nil {
@@ -59,6 +70,8 @@ func (jwk *JWK) ThumbprintHex(method crypto.Hash) string {
 	return hex.EncodeToString(v)
 }
 
+// Thumbprint computes the JWK Thumbprint as defined in RFC 7638 using the
+// specified hash method.
 func (jwk *JWK) Thumbprint(method crypto.Hash) ([]byte, error) {
 	// compute thumbprint
 	// https://www.rfc-editor.org/rfc/rfc7638
@@ -74,6 +87,8 @@ func (jwk *JWK) Thumbprint(method crypto.Hash) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+// UnmarshalJSON implements json.Unmarshaler. It parses a JWK JSON object
+// and populates the key fields accordingly.
 func (jwk *JWK) UnmarshalJSON(v []byte) error {
 	if bytes.Equal(v, []byte("null")) {
 		// no-op
@@ -90,6 +105,9 @@ func (jwk *JWK) UnmarshalJSON(v []byte) error {
 	return jwk.ApplyValues(tmp)
 }
 
+// ApplyValues populates the JWK from a map of key-value pairs, typically
+// obtained from JSON unmarshaling. The "kty" field is required and determines
+// how the remaining fields are interpreted.
 func (jwk *JWK) ApplyValues(values map[string]any) error {
 	kty, ok := values["kty"]
 	if !ok {
@@ -132,7 +150,7 @@ func (jwk *JWK) ApplyValues(values map[string]any) error {
 				return fmt.Errorf("invalid RSA private key: %w", err)
 			}
 			jwk.PrivateKey = res
-			jwk.PublicKey = res.PublicKey
+			jwk.PublicKey = &res.PublicKey
 			break
 		}
 
@@ -183,7 +201,7 @@ func (jwk *JWK) ApplyValues(values map[string]any) error {
 			}
 			// TODO validate key?
 			jwk.PrivateKey = res
-			jwk.PublicKey = res.PublicKey
+			jwk.PublicKey = &res.PublicKey
 			break
 		}
 
@@ -216,10 +234,14 @@ func (jwk *JWK) ApplyValues(values map[string]any) error {
 	return nil
 }
 
+// MarshalJSON implements json.Marshaler. It exports the JWK including private
+// key material if present.
 func (jwk *JWK) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jwk.ExportValues())
 }
 
+// ExportValues returns all JWK fields as a map, including optional metadata
+// fields (kid, alg, use, ext, key_ops) and key material.
 func (jwk *JWK) ExportValues() map[string]any {
 	res := jwk.ExportRequiredValues()
 
@@ -242,6 +264,8 @@ func (jwk *JWK) ExportValues() map[string]any {
 	return res
 }
 
+// ExportRequiredValues returns only the required JWK fields (kty and key
+// material). If a private key is present, private key fields are included.
 func (jwk *JWK) ExportRequiredValues() map[string]any {
 	if jwk.PrivateKey != nil {
 		switch v := jwk.PrivateKey.(type) {
@@ -268,6 +292,8 @@ func (jwk *JWK) ExportRequiredValues() map[string]any {
 	return nil
 }
 
+// ExportRequiredPublicValues returns only the required public key fields,
+// suitable for computing JWK Thumbprints per RFC 7638.
 func (jwk *JWK) ExportRequiredPublicValues() map[string]any {
 	switch v := jwk.PublicKey.(type) {
 	case *rsa.PublicKey:

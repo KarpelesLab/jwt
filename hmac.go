@@ -7,8 +7,12 @@ import (
 	"io"
 )
 
+// hmacAlgo implements the Algo interface for HMAC-based signing algorithms
+// (HS224, HS256, HS384, HS512). The underlying value is the crypto.Hash
+// that determines the hash function used.
 type hmacAlgo crypto.Hash
 
+// String returns the JWT algorithm name (e.g. "HS256") for this HMAC algorithm.
 func (h hmacAlgo) String() string {
 	switch crypto.Hash(h) {
 	case crypto.SHA224:
@@ -24,10 +28,12 @@ func (h hmacAlgo) String() string {
 	}
 }
 
+// Hash returns the underlying crypto.Hash used by this HMAC algorithm.
 func (h hmacAlgo) Hash() crypto.Hash {
 	return crypto.Hash(h)
 }
 
+// Sign computes the HMAC signature. The private key must be a []byte.
 func (h hmacAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.([]byte)
 	if !ok {
@@ -42,6 +48,8 @@ func (h hmacAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]by
 	return mac.Sum(nil), nil
 }
 
+// Verify checks the HMAC signature using constant-time comparison.
+// The public key must be a []byte (the same shared secret used for signing).
 func (h hmacAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 	pk, ok := pub.([]byte)
 	if !ok {

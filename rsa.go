@@ -7,8 +7,11 @@ import (
 	"io"
 )
 
+// rsaAlgo implements the Algo interface for RSA PKCS#1 v1.5 signing algorithms
+// (RS256, RS384, RS512). The underlying value is the crypto.Hash used.
 type rsaAlgo crypto.Hash
 
+// String returns the JWT algorithm name (e.g. "RS256") for this RSA algorithm.
 func (h rsaAlgo) String() string {
 	switch h.Hash() {
 	case crypto.SHA224:
@@ -24,10 +27,13 @@ func (h rsaAlgo) String() string {
 	}
 }
 
+// Hash returns the underlying crypto.Hash used by this RSA algorithm.
 func (h rsaAlgo) Hash() crypto.Hash {
 	return crypto.Hash(h)
 }
 
+// Sign creates an RSA PKCS#1 v1.5 signature. The private key must implement
+// crypto.Signer with an *rsa.PublicKey.
 func (h rsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byte, error) {
 	pk, ok := priv.(crypto.Signer)
 	if !ok {
@@ -48,7 +54,13 @@ func (h rsaAlgo) Sign(rand io.Reader, buf []byte, priv crypto.PrivateKey) ([]byt
 	return pk.Sign(rand, hash.Sum(nil), h.Hash())
 }
 
+// Verify checks an RSA PKCS#1 v1.5 signature against the given public key.
+// If pub implements Public() crypto.PublicKey (e.g. *JWK), it will be unwrapped.
 func (h rsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
+	if obj, ok := pub.(interface{ Public() crypto.PublicKey }); ok {
+		pub = obj.Public()
+	}
+
 	pk, ok := pub.(*rsa.PublicKey)
 	if !ok {
 		return ErrInvalidSignature

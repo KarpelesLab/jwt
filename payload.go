@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// Payload represents the claims part of a JWT token as a map of key-value
+// pairs. Standard claims such as "iss", "sub", "exp", "nbf", "iat", "jti"
+// can be accessed via Get/Set, and convenience methods are provided for
+// type conversion.
 type Payload map[string]any
 
 // Get is a safe get that will return nil if the body itself is null or the
@@ -52,7 +56,7 @@ func (b Payload) GetString(key string) string {
 	case float64:
 		return strconv.FormatFloat(v, 'g', -1, 64)
 	case int64:
-		return strconv.FormatInt(v, 64)
+		return strconv.FormatInt(v, 10)
 	case json.Number:
 		return v.String()
 	case nil:
@@ -62,9 +66,9 @@ func (b Payload) GetString(key string) string {
 		rv := reflect.ValueOf(v)
 		switch rv.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return strconv.FormatInt(rv.Int(), 64)
+			return strconv.FormatInt(rv.Int(), 10)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return strconv.FormatUint(rv.Uint(), 64)
+			return strconv.FormatUint(rv.Uint(), 10)
 		case reflect.Float32:
 			return strconv.FormatFloat(rv.Float(), 'g', -1, 32)
 		case reflect.Float64:

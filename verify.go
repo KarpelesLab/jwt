@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// VerifyOption is a function that performs a single verification check on a
+// token. Multiple options can be composed via Token.Verify or VerifyMultiple.
 type VerifyOption func(*Token) error
 
 // VerifyAlgo returns a VerifyOption that will ensure the token's alg value is

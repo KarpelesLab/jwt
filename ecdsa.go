@@ -12,8 +12,15 @@ import (
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
+// ecdsaAlgo implements the Algo interface for ECDSA-based signing algorithms
+// (ES224, ES256, ES384, ES512, ES256K). The string value holds the algorithm
+// name which determines the hash function and signature digit length.
 type ecdsaAlgo string
 
+// DeprecatedAllowEcdsaASN1Signatures controls whether ECDSA signature
+// verification accepts ASN.1 DER-encoded signatures in addition to the
+// fixed-length R||S format required by RFC 7518. This exists for backward
+// compatibility and will eventually default to false.
 var (
 	DeprecatedAllowEcdsaASN1Signatures = true // this will turn to false eventually
 )
@@ -129,6 +136,7 @@ func (h ecdsaAlgo) Verify(buf, sign []byte, pub crypto.PublicKey) error {
 			if !ecdsa.VerifyASN1(pk, hash.Sum(nil), sign) {
 				return ErrInvalidSignature
 			}
+			return nil
 		}
 		return ErrInvalidSignatureLength
 	}
